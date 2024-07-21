@@ -11,7 +11,7 @@ use function Eleanor\BugFileLine;
  * @param string $n Имя шаблона
  * @param array $p Переменные шаблона
  * @oaram array $def переменные по-умолчанию (из шаблонизатора)
- * @param string $type f,c,a
+ * @param string $type f,o,a
  * @param object|array $data Содержимое хранилища шаблонов
  * @return ?string */
 function TemplateLoader(string$n,array$p,array$def,string$type,object|array$data):?string
@@ -48,16 +48,16 @@ function TemplateLoader(string$n,array$p,array$def,string$type,object|array$data
 			}
 		break;
 
-		case'c':#Classes
-			$c=[$data,$n];
+		case'o':#Objects
+			$o=[$data,$n];
 
 			if($def)
 				$p[]=$def;
 
 			if(method_exists($data,$n))
-				return call_user_func_array($c,$p);
+				return call_user_func_array($o,$p);
 
-			if(is_callable($c) and false!==$s=call_user_func_array($c,$p))
+			if(is_callable($o) and false!==$s=call_user_func_array($o,$p))
 				return$s;
 		break;
 
@@ -125,8 +125,8 @@ class Template extends \Eleanor\Abstracts\Append
 
 			elseif(is_object($path))
 			{#Шаблонизатор в виде объекта: в файле return new class {}
-				$this->loaded[$k]=['c',$path];
-				$result=TemplateLoader($n,$p,$this->default,'c',$path);
+				$this->loaded[$k]=['o',$path];
+				$result=TemplateLoader($n,$p,$this->default,'o',$path);
 			}
 
 			elseif(is_dir($path))
@@ -158,8 +158,8 @@ class Template extends \Eleanor\Abstracts\Append
 				}
 				elseif(is_object($content))
 				{
-					$this->loaded[$k]=['c',$path];
-					$result=TemplateLoader($n,$p,$this->default,'c',$path);
+					$this->loaded[$k]=['o',$content];
+					$result=TemplateLoader($n,$p,$this->default,'o',$content);
 				}
 			}
 

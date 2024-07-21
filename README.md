@@ -16,7 +16,9 @@ So here is Eleanor PHP Library which doesn't teach you how to code properly, but
 4. It provides delayed object creation, so for example connection to MySQL server won't be established until it is really needed.
 5. Coherent integration for third-party classes/interfaces/enums available.
 
-Key feature: it's fucking lightweight and readable. So no puzzles under the hood.  
+Key feature: it's fucking lightweight and readable. So no puzzles under the hood.
+
+The library requires PHP 8.3 or higher.
 
 ---
 ### Русский
@@ -38,3 +40,5 @@ Key feature: it's fucking lightweight and readable. So no puzzles under the hood
 5. Доступна гармоничная интеграция сторонних классов/интерфейсов/перечислений.
 
 Ключевая особенность: библиотека чертовски легкая и читабельная. Без головоломок под капотом.
+
+Библиотека работает на PHP 8.3 и выше.

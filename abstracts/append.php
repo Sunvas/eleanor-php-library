@@ -15,8 +15,8 @@ use Eleanor;
  * Пример: $part=$Obj('Part1'[,params]); */
 abstract class Append extends Eleanor\BaseClass implements \Stringable
 {
-	/** @var string Аккумулятор результатов */
-	public string $s='';
+	/** @var string Аккумулятор результата */
+	public string $store='';
 
 	/** @var bool Флаг выполненного клонирования
 	 * Смысл состоит в том, что каждый fluent interface - отдельный независимый объект. */
@@ -28,8 +28,8 @@ abstract class Append extends Eleanor\BaseClass implements \Stringable
 	/** Терминатор Fluent Interface, выдача результата */
 	public function __toString():string
 	{
-		$s=$this->s;
-		$this->s='';
+		$s=$this->store;
+		$this->store='';
 		return$s;
 	}
 
@@ -65,8 +65,8 @@ abstract class Append extends Eleanor\BaseClass implements \Stringable
 
 		$r=$this->_($n,$p);
 
-		if($r===null or is_scalar($r) or $r instanceof \Stringable)
-			$this->s.=$r;
+		if(is_scalar($r) or $r instanceof \Stringable)
+			$this->store.=$r;
 
 		return$this;
 	}

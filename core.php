@@ -105,6 +105,7 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 	};
 	$out=(string)$Tpl->{$type}($error,$code,$file,$line,$hint,$payload);
 
+	ob_clean();
 	Output::SendHeaders(Library::$bsod,503);
 
 	die($out);
@@ -174,7 +175,7 @@ abstract class BaseClass
 	}
 }
 
-/** LoadOnDemand Создание объектов по запросу.
+/** Assign On Demand Создание объектов по запросу.
  * Довольно часто бывают ситуации, когда объект нужно создать без явной на то необходимости. Как правило, в CMS объект
  * \MySQLi централизовано создаётся на раннем этапе (из-за особенностей хранения параметров для подключения к БД), а
  * потом подгружаемые компоненты используют его по мере необходимости. Но на простых сайтов, далеко не на каждой странице
@@ -187,16 +188,16 @@ abstract class BaseClass
  *
  * class B
  * {
- *    public static null|LOD|A $o;
+ *    public static null|Assign|A $o;
  * }
  *
- * LOD::Assign(B::$o,fn()=>new A);
+ * Assign::For(B::$o,fn()=>new A);
  *
- * echo get_class(B::$o); //LOD
+ * echo get_class(B::$o); //Assign
  * B::$o->Say(); //Hi
  * echo get_class(B::$o); //A
  */
-class LOD extends BaseClass
+class Assign extends BaseClass
 {
 	/** @param ?object &$link Ссылка, куда будет записан объект при создании
 	 * @param \Closure $Creator Функция, которая должна вернуть объект */
@@ -209,7 +210,7 @@ class LOD extends BaseClass
 	}
 
 	/** Синтаксический сахар для связывания переменной с объектов, указав её один раз */
-	public static function Assign(?object &$link,\Closure$Creator):void
+	public static function For(?object &$link,\Closure$Creator):void
 	{
 		$link=new static($link,$Creator);
 	}

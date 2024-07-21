@@ -189,21 +189,24 @@ class MySQL extends Eleanor\BaseClass
 		return$return_r ? $R : $this->Driver;
 	}
 
+
+	public const string IGNORE='IGNORE';
+
 	/** Обертка для удобного осуществления INSERT запросов
 	 * @param string $t Имя таблицы, куда необходимо вставить данные
 	 * @param array $a Данные. С форматами можно ознакомиться в GenerateInsert.
-	 * @param string $type Тип INSERT запроса
-	 * @throws EE_DB
-	 * @return int Insert ID */
-	public function Insert(string$t,array$a,string$type='IGNORE'):int
+	 * @param string $ext Для запросов INSERT IGNORE значение должно быть IGNORE, для ON DUPLICATE KEY UPDATE - содержимое обновления
+	 * @return int Insert ID
+	 * @throws EE_DB */
+	public function Insert(string$t,array$a,string$ext=self::IGNORE):int
 	{
 		//Обычно после ON DUPLICATE KEY UPDATE используется =
-		if(str_contains($type,'='))
-			[$odku,$type]=['ON DUPLICATE KEY UPDATE '.$type,''];
+		if(str_contains($ext,'='))
+			[$odku,$ext]=['ON DUPLICATE KEY UPDATE '.$ext,''];
 		else
 			$odku='';
 
-		$this->Query("INSERT {$type} INTO `{$t}`".$this->GenerateInsert($a).$odku);
+		$this->Query("INSERT {$ext} INTO `{$t}`".$this->GenerateInsert($a).$odku);
 
 		return$this->Driver->insert_id;
 	}
@@ -211,12 +214,12 @@ class MySQL extends Eleanor\BaseClass
 	/** Обертка для удобного осуществления REPLACE запросов
 	 * @param string $t Имя таблицы, куда необходимо вставить данные
 	 * @param array $a Данные. С форматами можно ознакомиться в GenerateInsert
-	 * @param string $type Тип REPLACE запроса
-	 * @throws EE_DB
-	 * @return int Affected rows */
-	public function Replace(string$t,array$a,string$type=''):int
+	 * @param string $ext Для запросов REPLACE IGNORE значение должно быть IGNORE
+	 * @return int Affected rows
+	 * @throws EE_DB */
+	public function Replace(string$t,array$a,string$ext=''):int
 	{
-		$this->Query("REPLACE {$type} INTO `{$t}` ".$this->GenerateInsert($a));
+		$this->Query("REPLACE {$ext} INTO `{$t}` ".$this->GenerateInsert($a));
 
 		return$this->Driver->affected_rows;
 	}
@@ -265,31 +268,29 @@ class MySQL extends Eleanor\BaseClass
 	/** Обертка для удобного осуществления UPDATE запросов
 	 * @param string $t Имя таблицы, где необходимо обновить данные
 	 * @param array $a Массив изменяемых данных. С форматами можно ознакомиться в GenerateInsert
-	 * @param string $w Условие обновления. Секция WHERE, без ключевого слова WHERE.
-	 * @param string|array $type [Тип запроса, по умолчанию - ignore]
+	 * @param string|array $w Условие обновления. Секция WHERE, без ключевого слова WHERE.
+	 * @param string|array $ext [Для запросов UPDATE IGNORE значение должно быть IGNORE]
 	 * @param array $params Параметры для Prepared statements
-	 * @throws EE_DB
-	 * @return int Affected rows */
-	public function Update(string$t,array$a,string$w='',string|array$type='IGNORE',array$params=[]):int
+	 * @return int Affected rows
+	 * @throws EE_DB */
+	public function Update(string$t,array$a,string|array$w='',string|array$ext=self::IGNORE,array$params=[]):int
 	{
 		if(!$a)
 			return 0;
 
-		if(is_array($type))
+		if(is_array($ext))
 		{
-			$params=$type;
-			$type='IGNORE';
+			$params=$ext;
+			$ext=self::IGNORE;
 		}
 
-		$q="UPDATE {$type} `{$t}` SET ";
+		$q="UPDATE {$ext} `{$t}` SET ";
 
 		foreach($a as $k=>$v)
 			$q.="`{$k}`=".$this->Escape($v).',';
 
 		$q=rtrim($q,',');
-
-		if($w)
-			$q.=' WHERE '.$w;
+		$q.=$this->Where($w);
 
 		if($params)
 			$this->Execute($q,$params);
@@ -301,20 +302,20 @@ class MySQL extends Eleanor\BaseClass
 
 	/** Обертка для удобного осуществления DELETE запросов
 	 * @param string $t Имя таблицы, откуда необходимо удалить данные
-	 * @param string $w Секция WHERE, без ключевого слова WHERE. Если не заполнять - выполнится TRUNCATE запрос.
-	 * @param string|array $type [Тип запроса, по умолчанию - ignore]
+	 * @param string|array $w Секция WHERE, без ключевого слова WHERE. Если не заполнять - выполнится TRUNCATE запрос.
+	 * @param string|array $ext [Для запросов DELETE IGNORE значение должно быть IGNORE]
 	 * @param array $params Параметры для Prepared statements
 	 * @throws EE_DB
 	 * @return int Affected rows */
-	public function Delete(string$t,string$w='',string|array$type='IGNORE',array$params=[]):int
+	public function Delete(string$t,string|array$w='',string|array$ext=self::IGNORE,array$params=[]):int
 	{
-		if(is_array($type))
+		if(is_array($ext))
 		{
-			$params=$type;
-			$type='IGNORE';
+			$params=$ext;
+			$ext=self::IGNORE;
 		}
 
-		$q=$w ? "DELETE {$type} FROM `{$t}` WHERE ".$w : "TRUNCATE TABLE `{$t}`";
+		$q=$w ? "DELETE {$ext} FROM `{$t}`".$this->Where($w) : "TRUNCATE TABLE `{$t}`";
 
 		if($params)
 			$this->Execute($q,$params);
@@ -327,7 +328,8 @@ class MySQL extends Eleanor\BaseClass
 	/** Преобразование массива в последовательность для конструкции IN(). Данные автоматически экранируются
 	 * @param mixed $a Данные для конструкции IN
 	 * @param bool $not Включение конструкции NOT IN. Для оптимизации запросов, по возможности используется = вместо IN
-	 * @return string */
+	 * @return string
+	 * @throws EE_DB */
 	public function In(mixed$a,bool$not=false):string
 	{
 		if(is_array($a) and count($a)==1)
@@ -344,31 +346,48 @@ class MySQL extends Eleanor\BaseClass
 		return($not ? '!' : '').'='.$this->Escape($a);
 	}
 
-	/** Экранирование опасных символов в строках
-	 * @param string $s Строка для экранирования
-	 * @param bool $qs Флаг включения одинарных кавычек в начало и в конец результата
-	 * @throws EE_DB
-	 * @return mixed */
-	public function Escape($s,bool$qs=true):mixed
+	/** Генерация секции WHERE
+	 * @param string|array $w Условия
+	 * @return string
+	 * @throws EE_DB */
+	public function Where(string|array$w):string
 	{
-		if($s===null)
+		if(is_array($w))
+		{
+			foreach($w as $k=>&$v)
+				$v="`{$k}`=".$this->Escape($v);
+
+			$w=implode(' AND ',$w);
+		}
+
+		return $w ? ' WHERE '.$w : '';
+	}
+
+	/** Экранирование опасных символов в строках
+	 * @param mixed $d Значение для экранирования
+	 * @param bool $q Флаг включения одинарных кавычек в начало и в конец результата
+	 * @return mixed
+	 * @throws EE_DB */
+	public function Escape(mixed$d,bool$q=true):mixed
+	{
+		if($d ===null)
 			return'NULL';
 
-		if(is_int($s) or is_float($s))
-			return$s;
+		if(is_int($d) or is_float($d))
+			return$d;
 
-		if(is_bool($s))
-			return(int)$s;
+		if(is_bool($d))
+			return(int)$d;
 
-		if($s instanceof \Closure)
-			return$s();
+		if($d instanceof \Closure)
+			return$d();
 
 		if(!isset($this->Driver))
 			$this->Connect();
 
-		$s=$this->Driver->real_escape_string((string)$s);
+		$d=$this->Driver->real_escape_string((string)$d);
 
-		return$qs ? "'{$s}'" : $s;
+		return$q ? "'{$d}'" : $d;
 	}
 
 	/** Prepared statements shortcut. Я знаю о существовании mysqli::execute_query, проблема в том что каждый элемент в params интерпретируется как строка "Each value is treated as a string.":

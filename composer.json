@@ -1,0 +1,17 @@
+{
+  "name": "sunvas/eleanor-php-library",
+  "description": "Fucking perfect PHP library designed for serving up SPA (single page applications) and bloat-free websites.",
+  "minimum-stability": "stable",
+  "keywords": ["php","php-library","php8","php8-library"],
+  "homepage": "https://github.com/Seldaek/monolog",
+  "license": "MIT",
+  "authors": [
+	{
+	  "name": "Alexnader Sunvas",
+	  "email": "library@sunvas.online"
+	}
+  ],
+  "require": {
+    "php": ">=8.3.0"
+  }
+}
