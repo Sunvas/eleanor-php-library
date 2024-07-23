@@ -97,8 +97,8 @@ function QuietExecution(callable$Func):mixed
  * @param ?array $payload данные, которые привели к сбою */
 function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=null,?array$payload=null):never
 {
-	$Tpl=new Classes\Template(__DIR__ . '/bsod.php');
-	$type=match(Library::$bsod){
+	$Tpl=new Classes\Template(Library::$bsod);
+	$type=match(Library::$bsodtype){
 		Output::HTML=>'html',
 		Output::JSON=>'json',
 		default=>'text'
@@ -106,7 +106,7 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 	$out=(string)$Tpl->{$type}($error,$code,$file,$line,$hint,$payload);
 
 	ob_clean();
-	Output::SendHeaders(Library::$bsod,503);
+	Output::SendHeaders(Library::$bsodtype,503);
 
 	die($out);
 }
@@ -253,8 +253,11 @@ class Library extends BaseClass
 		/** @var string Путь к каталогу, в который будут помещаться логи */
 		$logs,
 
+		/** @var string Путь к файлу экрана смерти */
+		$bsod=__DIR__.'/bsod.php',
+
 		/** @var string Тип экрана смерти */
-		$bsod='html';
+		$bsodtype='text/html';
 
 	/** @var array $creators Хранилище конструкторов будущих объектов */
 	protected array $creators=[];
@@ -410,8 +413,6 @@ spl_autoload_register(function(string$c){
 		}
 	}
 });
-
-Library::$bsod=Output::HTML;
 
 #Поддержка IDN
 define('Eleanor\PUNYCODE',filter_var($_SERVER['HTTP_HOST'] ?? '',FILTER_VALIDATE_DOMAIN,FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
