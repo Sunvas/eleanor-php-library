@@ -20,6 +20,8 @@ Key feature: it's fucking lightweight and readable. So no puzzles under the hood
 
 The library requires PHP 8.3 or higher.
 
+Code examples are available [here](https://github.com/Sunvas/eleanor-php-library-examples).
+
 ---
 ### Русский
 Я заебался со всеми этими раздутыми модными php-фреймворки, которые разбухли настолько, что уже не вписываются в рамки обычного виртуального хостинга.
@@ -42,3 +44,5 @@ The library requires PHP 8.3 or higher.
 Ключевая особенность: библиотека чертовски легкая и читабельная. Без головоломок под капотом.
 
 Библиотека работает на PHP 8.3 и выше.
+
+Примеры кода доступны [здесь](https://github.com/Sunvas/eleanor-php-library-examples).

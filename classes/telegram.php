@@ -23,7 +23,7 @@ class Telegram extends Eleanor\BaseClass
 	 * @return array|string Строка при ошибке, array - при успехе */
 	public static function CheckAuth(array$data,string$key,int$expire=3600):array|string
 	{
-		$signature=isset($data['hash']) ? (string)$data['hash'] : '';
+		$signature=(string)($data['hash'] ?? '');
 		$checking=[];
 
 		unset($data['hash']);

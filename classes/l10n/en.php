@@ -38,10 +38,10 @@ class En extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 			DateFormat::Time=>date('H:i:s',$d),
 			DateFormat::DateTime=>date('Y-m-d H:i:s',$d),
 			DateFormat::MonthYear=>date('F Y',$d),
-			DateFormat::TextDate=>static::DateText($d,false),
-			DateFormat::TextDateTime=>static::DateText($d,false).date(' H:i',$d),
-			DateFormat::HumanDate=>static::DateText($d),
-			DateFormat::HumanDateTime=>static::DateText($d).date(' H:i',$d),
+			DateFormat::TextDate=>static::TextDate($d,false),
+			DateFormat::TextDateTime=>static::TextDate($d,false).date(' H:i',$d),
+			DateFormat::HumanDate=>static::TextDate($d),
+			DateFormat::HumanDateTime=>static::TextDate($d).date(' H:i',$d),
 		};
 	}
 

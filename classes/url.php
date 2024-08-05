@@ -29,6 +29,7 @@ class Url extends Eleanor\BaseClass
 		}
 		*/
 
+		//Перед нам гарантировано ЧПУ
 		if(isset($_SERVER['FURL']))
 			return urldecode(ltrim($_SERVER['FURL'],'/'));
 
