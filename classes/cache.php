@@ -81,7 +81,7 @@ class Cache extends \Eleanor\BaseClass
 			{
 				$this->Put($key,$out[0],$out[1]);
 
-				return false;
+				return null;
 			}
 
 			return$out[0];
@@ -96,7 +96,7 @@ class Cache extends \Eleanor\BaseClass
 		$file=$this->storage."/{$key}.php";
 
 		if(!is_file($file))
-			return false;
+			return null;
 
 		$out=\Eleanor\AwareInclude($file);
 

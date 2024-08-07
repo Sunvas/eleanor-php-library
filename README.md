@@ -18,9 +18,8 @@ So here is Eleanor PHP Library which doesn't teach you how to code properly, but
 
 Key feature: it's fucking lightweight and readable. So no puzzles under the hood.
 
-The library requires PHP 8.3 or higher.
-
-Code examples are available [here](https://github.com/Sunvas/eleanor-php-library-examples).
+The library requires PHP 8.3 or higher. Code examples are available [here](https://github.com/Sunvas/eleanor-php-library-examples).
+Composer lovers can install the library with the command `composer require sunvas/eleanor-php-library`.
 
 ---
 ### Русский
@@ -43,6 +42,5 @@ Code examples are available [here](https://github.com/Sunvas/eleanor-php-library
 
 Ключевая особенность: библиотека чертовски легкая и читабельная. Без головоломок под капотом.
 
-Библиотека работает на PHP 8.3 и выше.
-
-Примеры кода доступны [здесь](https://github.com/Sunvas/eleanor-php-library-examples).
+Библиотека работает на PHP 8.3 и выше. Примеры кода доступны [здесь](https://github.com/Sunvas/eleanor-php-library-examples).
+Любители composer могут установить библиотеку командой `composer require sunvas/eleanor-php-library`

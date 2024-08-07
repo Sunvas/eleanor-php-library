@@ -50,24 +50,24 @@ class Url extends Eleanor\BaseClass
 	/** Генерация ссылок
 	 * @param array $static Статическая часть ссылки
 	 * @param string $ending Окончание ссылки
-	 * @param array $query request часть ссылки
+	 * @param array $q Query часть ссылки
 	 * @return string */
-	public static function Make(array$static=[],string$ending='',array$query=[]):string
+	public static function Make(array $static=[],string $ending='',array$q=[]):string
 	{
-		$result=[];
+		$r=[];
 
 		foreach($static as $v)
-			if($v or (string)$v=='0')
-				$result[]=urlencode($v);
+			$r[]=is_int($v) ? $v : urlencode((string)$v);
 
-		return join('/',$result).$ending.($query ? '?'.static::Query($query) : '');
+		return join('/',$r).$ending.($q ? static::Query($q) : '');
 	}
 
 	/** Генерация Query для
 	 * @param array $a Многомерный массив параметров, которых должен быть преобразован в URL
+	 * @param bool $q Добавить ? в начале, если удалось собрать строку запроса
 	 * @param string $d Разделитель параметров, получаемого URL
 	 * @return string */
-	public static function Query(array$a,string$d='&amp;'):string
+	public static function Query(array$a,bool$q=true,string$d='&amp;'):string
 	{
 		$r=[];
 
@@ -77,28 +77,30 @@ class Url extends Eleanor\BaseClass
 
 			if(is_array($v))
 				static::QueryParam($v,$k.'[',$r);
-			elseif($v or (string)$v=='0')
-				$r[]=$k.'='.(is_string($v) ? urlencode($v) : (int)$v);
-			else
+			elseif(is_string($v))
+				$r[]=$k.'='.urlencode($v);
+			elseif(is_int($v))
+				$r[]=$k.'='.$v;
+			elseif($v)
 				$r[]=$k;
 		}
 
-		return join($d,$r);
+		return($q && $r ? '?' : '').join($d,$r);
 	}
 
 	/** Генерация параметров для метода Query.
 	 * @param array $a Параметры
 	 * @param string $p Префикс для каждого параметра
 	 * @param array &$r Ссылка на массив для помещения результатов */
-	protected static function QueryParam(array $a, string $p, array &$r):void
+	protected static function QueryParam(array$a,string$p,array &$r):void
 	{
-		$i=0;
+		$is_list=array_is_list($a);
 
 		foreach($a as $k=>&$v)
 			if(is_array($v))
 				static::QueryParam($v,$p.$k.'][',$r);
-			elseif($v or (string)$v=='0')
-				$r[]=$p.(($k===$i++) ? '' : urlencode($k)).']='.(is_string($v) ? urlencode($v) : (int)$v);
+			else
+				$r[]=$p.($is_list ? '' : urlencode($k)).']='.(is_int($v) ? $v : urlencode((string)$v));
 	}
 }
 

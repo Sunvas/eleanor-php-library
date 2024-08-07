@@ -237,7 +237,10 @@ class Library extends BaseClass
 		$old_error_handler,
 
 		/** @var ?callable Предыдущий перехватчик исключений */
-		$old_exception_handler;
+		$old_exception_handler,
+
+		/** @var callable Фильтр выборочного логирования (если отключено $log_all_errors или $log_all_exceptions) */
+		$log_filter;
 
 	public static bool
 		/** @var bool Флаг включения логирования всех ошибок */
@@ -318,12 +321,20 @@ class Library extends BaseClass
 #По умолчанию все логи хранятся в папке ./log от корня сайта. Доступ к этой папке лучше закрыть.
 Library::$logs=$_SERVER['DOCUMENT_ROOT'].SITEDIR.'logs/';
 
-Library::$old_error_handler=set_error_handler(function($c, $error, $f, $l, $context=null){
-	#Возможно, ошибку должен был залогировать предыдущий скрипт
-	if(!Library::$log_all_errors or Library::$old_error_handler and !str_starts_with($f,__DIR__.DIRECTORY_SEPARATOR))
-		call_user_func(Library::$old_error_handler,$c,$error,$f,$l,$context);
+#Фильтр на вход получает путь к файлу с ошибкой/исключением и разрешает или запрещает логирование.
+Library::$log_filter=fn($f)=>str_starts_with($f,__DIR__.DIRECTORY_SEPARATOR);
 
-	elseif($c&~E_STRICT and Library::$logs_enabled and class_exists('\Eleanor\Classes\EE'))#
+Library::$old_error_handler=set_error_handler(function($c,$error,$f,$l,$context=null){
+	#Возможно, ошибку должен был залогировать предыдущий скрипт
+	if(!Library::$log_all_errors and !call_user_func(Library::$log_filter,$f,$c))
+	{
+		if(Library::$old_error_handler)
+			call_user_func(Library::$old_error_handler,$c,$error,$f,$l,$context);
+
+		return;
+	}
+
+	if($c&~E_STRICT and Library::$logs_enabled and class_exists('\Eleanor\Classes\EE'))#
 	{
 		if($c & E_ERROR)
 			$type='Error ';
@@ -361,7 +372,7 @@ Library::$old_exception_handler=set_exception_handler(function(\Throwable$E){
 
 	if($is_ee)
 		$E->Log();
-	elseif((Library::$log_all_exceptions or str_starts_with($f,__DIR__.DIRECTORY_SEPARATOR))
+	elseif(Library::$log_all_exceptions or call_user_func(Library::$log_filter,$f,$c)
 		#Заплатка на случай отключенного автолоадера
 		and (class_exists('\Eleanor\Classes\EE',false) or include(__DIR__.'/classes/ee.php')))
 	{
