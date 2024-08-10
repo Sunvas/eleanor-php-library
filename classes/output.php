@@ -58,7 +58,7 @@ class Output extends Eleanor\BaseClass
 		return$hash;
 	}
 
-	/** @const Mime Types for SendHeaders */
+	/** @const Mime Types for SendHeaders. Список не исключительный, поэтому не enum */
 	public const string
 		CSS='text/css',
 		XML='text/xml',

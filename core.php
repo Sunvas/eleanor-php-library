@@ -396,15 +396,23 @@ spl_autoload_register(function(string$c){
 	if(!str_starts_with($c,__NAMESPACE__.'\\'))
 		return;
 
-	$lcc=strtolower($c);#LowerCase class
-	$lcc=substr($lcc,strlen(__NAMESPACE__));
+	#LowerCase class
+	$lcc=substr($c,strlen(__NAMESPACE__));
+	$lcc=strtolower($lcc);
 
-	$path=__DIR__.DIRECTORY_SEPARATOR.str_replace('\\',DIRECTORY_SEPARATOR,$lcc).'.php';
+	$path=__DIR__.DIRECTORY_SEPARATOR.strtr($lcc,'\\',DIRECTORY_SEPARATOR).'.php';
+	$exists=is_file($path);
 
-	if(is_file($path))
-		require$path;
+	if($exists)
+	{
+		$r=require$path;
 
-	if(!class_exists($c,false) and !interface_exists($c,false) and !trait_exists($c,false) and !enum_exists($c,false))
+		//Попытка сделать класс "своим" (доступным из \Eleanor)
+		if(class_exists($c,false) or (is_string($r) and class_exists($r,false) and class_alias($r,$c,false)))
+			return;
+	}
+
+	if(!$exists or !class_exists($c,false) and !interface_exists($c,false) and !trait_exists($c,false) and !enum_exists($c,false))
 	{
 		$what=match(strstr($lcc, '\\', true)){
 			'traits'=>'Trait',
