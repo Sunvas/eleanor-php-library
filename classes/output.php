@@ -105,7 +105,7 @@ class Output extends Eleanor\BaseClass
 
 			header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic' 'nonce-{$nonces}'");
 		}
-		else
+		elseif($mimetype===static::HTML)
 			header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic'");
 
 		header(static::POWERED);

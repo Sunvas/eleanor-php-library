@@ -7,62 +7,70 @@
 namespace Eleanor\Classes;
 use Eleanor;
 
-/** Генерации ссылок */
-class Url extends Eleanor\BaseClass
+/** Генератор относительных URI */
+class Uri extends Eleanor\BaseClass
 {
-	/** @static Адрес текущего адреса в браузере */
+	/** @static Текущий адрес (по которому обратились к скрипту) */
 	public static string $current;
 
-	/** Получение ЧеловекоПонятногоУрл
+	/** Получение ЧеловекоПонятного URI (обработанную переменную $uri из nginx)
+	 * @url https://ru.wikipedia.org/wiki/Человекопонятный_URL
 	 * @return string */
-	public static function GetFURL():string
+	public static function GetURI():string
 	{
-		/* Чтобы FURL работал, нужно в конфигурацию nginx поместить примерно следующее:
+		/* Для повышения точности, желательно в конфигурацию nginx поместить примерно следующее:
+		set $clean_url "";
+
 		if (!-e $request_filename) {
-			set $furl $uri;
+			set $clean_url $uri;
 			rewrite ^.*$ /index.php last;
 		}
 		...
 		location ~ \.php$ {
-			fastcgi_param FURL $furl;
+			fastcgi_param URI $clean_url;
 			...
 		}
 		*/
 
 		//Перед нам гарантировано ЧПУ
-		if(isset($_SERVER['FURL']))
-			return urldecode(ltrim($_SERVER['FURL'],'/'));
+		if(isset($_SERVER['URI']))
+		{
+			$uri=$_SERVER['URI'];
 
-		//Перед нами не ЧПУ: ссылки вида /index.php?param=value
-		if(str_starts_with($_SERVER['REQUEST_URI'],$_SERVER['SCRIPT_NAME']))
+			return urldecode(substr($uri,strlen(Eleanor\SITEDIR)));
+		}
+
+		$uri=$_SERVER['REQUEST_URI'];
+
+		//НЕ ЧПУ: ссылки вида /index.php?param=value
+		if(str_starts_with($uri,$_SERVER['SCRIPT_NAME']))
 			return'';
 
-		//Перед нами не ЧПУ: просто корень сайта / или корень сайта с параметрами /?param=value
-		if($_SERVER['REQUEST_URI']==='/' or str_starts_with($_SERVER['REQUEST_URI'],'/?'))
+		//НЕ ЧПУ: корень сайта / или корень сайта с параметрами /?param=value
+		if($uri==='/' or str_starts_with($uri,'/?'))
 			return'';
 
-		//? добавлен на случай полного отсутствия параметров
-		$furl=strstr($_SERVER['REQUEST_URI'].'?', '?', true);
+		[$uri]=explode('?',static::$current, 2);
 
-		return urldecode(substr($furl,strlen(Eleanor\SITEDIR)));
+		return urldecode($uri);
 	}
 
-	/** Генерация ссылок
-	 * @param array $static Статическая часть ссылки
+	/** Генерация относительных URI (ссылок)
+	 * @param array $slugs ЧПУшная часть ссылки
 	 * @param string $ending Окончание ссылки
 	 * @param array $q Query часть ссылки
 	 * @return string */
-	public static function Make(array $static=[],string $ending='',array$q=[]):string
+	public static function Make(array$slugs=[],string$ending='',array$q=[]):string
 	{
 		$r=[];
 
-		foreach($static as $v)
+		foreach($slugs as $v)
 			$r[]=is_int($v) ? $v : urlencode((string)$v);
 
 		return join('/',$r).$ending.($q ? static::Query($q) : '');
 	}
 
-	/** Генерация Query для
+	/** Генерация query
 	 * @param array $a Многомерный массив параметров, которых должен быть преобразован в URL
 	 * @param bool $q Добавить ? в начале, если удалось собрать строку запроса
 	 * @param string $d Разделитель параметров, получаемого URL
@@ -104,6 +112,6 @@ class Url extends Eleanor\BaseClass
 	}
 }
 
-Url::$current=substr($_SERVER['REQUEST_URI'],strlen(Eleanor\SITEDIR));
+Uri::$current=substr($_SERVER['REQUEST_URI'],strlen(Eleanor\SITEDIR));
 
-return Url::class;
+return Uri::class;

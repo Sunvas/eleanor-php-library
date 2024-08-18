@@ -2,8 +2,6 @@
 $ent=ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE | ENT_DISALLOWED;
 
 return[
-	'lack_of_data'=>'There is not enough data to connect to the database.',
-
 	/** Ошибка при подключении к БД */
 	'connect'=>function($errno,$error,$db)use($ent){
 		$error=$errno ? htmlspecialchars($error,$ent,Eleanor\CHARSET,false) : '';

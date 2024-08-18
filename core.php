@@ -233,33 +233,33 @@ class Assign extends BaseClass
 class Library extends BaseClass
 {
 	public static
-		/** @var ?callable Предыдущий обработчик ошибок */
+		/** @var ?callable $old_error_handler Предыдущий обработчик ошибок */
 		$old_error_handler,
 
-		/** @var ?callable Предыдущий перехватчик исключений */
+		/** @var ?callable $old_exception_handler Предыдущий перехватчик исключений */
 		$old_exception_handler,
 
-		/** @var callable Фильтр выборочного логирования (если отключено $log_all_errors или $log_all_exceptions) */
+		/** @var callable $log_filter Фильтр выборочного логирования (если отключено $log_all_errors или $log_all_exceptions) */
 		$log_filter;
 
 	public static bool
-		/** @var bool Флаг включения логирования всех ошибок */
+		/** @var bool $log_all_errors Флаг включения логирования всех ошибок */
 		$log_all_errors=true,
 
-		/** @var bool Флаг включения логирования всех исключений */
+		/** @var bool $log_all_exceptions Флаг включения логирования всех исключений */
 		$log_all_exceptions=true,
 
-		/** @var bool Флаг включения режима логирования */
+		/** @var bool $logs_enabled Флаг включения режима логирования */
 		$logs_enabled=true;
 
 	public static string
-		/** @var string Путь к каталогу, в который будут помещаться логи */
+		/** @var string $logs Путь к каталогу, в который будут помещаться логи */
 		$logs,
 
-		/** @var string Путь к файлу экрана смерти */
+		/** @var string $bsod Путь к файлу экрана смерти */
 		$bsod=__DIR__.'/bsod.php',
 
-		/** @var string Тип экрана смерти */
+		/** @var string $bsodtype Тип экрана смерти */
 		$bsodtype='text/html';
 
 	/** @var array $creators Хранилище конструкторов будущих объектов */

@@ -79,7 +79,7 @@ class EE extends \Exception
 				$data['n']??=0;#Counter
 				$data['n']++;
 
-				$data['u']=Url::$current;
+				$data['u']=Uri::$current;
 				$data['d']=date('Y-m-d H:i:s');
 				$data['l']=$this->line;
 				$data['m']=$this->getMessage();

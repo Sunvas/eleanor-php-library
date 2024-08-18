@@ -10,183 +10,128 @@ use function Eleanor\BugFileLine;
 
 /** Библиотека для работы с MySQL, с использованием драйвера MySQLi
  * Не учитывается SELECT @@max_allowed_packet
- * @property \MySQLi $Driver Объект базы данных */
+ * @property \MySQLi $M Объект базы данных */
 class MySQL extends Eleanor\BaseClass
 {
 	/** @var \MySQLi */
-	public \MySQLi $Driver;
-
-	/** @var string Название базы данных, с которой мы работаем */
-	public string $db;
-
-	/** @var array Промежуточное хранение параметров */
-	protected array $params=[];
+	public \MySQLi $M;
 
 	/** Соединение с БД
-	 * @param array|\MySQLi $p Объект MySQLi или параметры соединения с БД. Ключи массива:
-	 *  [string host] Сервер БД.
-	 *  [string user] Пользователь БД
-	 *  [string pass] Пароль пользователя
-	 *  [string db] Название базы данных
-	 *  [string charset] Кодировка, необязательный параметр https://dev.mysql.com/doc/refman/8.0/en/charset-charsets.html
-	 *  [bool now] Флаг немедленного подключения. Во всех остальных случаях, подключение происходит по требованию
-	 *  [bool sync] Флаг синхронизации времени БД с временем PHP
+	 * @url https://www.php.net/manual/ru/mysqli.construct.php
+	 * @param null|string|\MySQLi $host Объект MySQLi (остальные параметры будут проигнорированы), имя хоста или IP
+	 * @param ?string $user Имя пользователя MySQL
+	 * @param ?string $pass Пароль MySQL
+	 * @param ?string $db База данных по умолчанию
+	 * @param string $charset Кодировка базы данных по умолчанию https://dev.mysql.com/doc/refman/8.0/en/charset-charsets.html
+	 * @param bool $sync Флаг синхронизации времени БД с временем сервера
+	 * @param ?int $port Номер порта для попытки подключения к серверу MySQL
+	 * @param ?string $socket Сокет или именованный пайп
 	 * @throws EE_DB */
-	public function __construct(\MySQLi|array$p)
+	public function __construct(null|string|\MySQLi$host=null,?string$user=null,#[\SensitiveParameter]?string$pass=null,?string$db=null,string$charset='utf8mb4',bool$sync=true,?int$port=null,?string$socket=null)
 	{
-		if(is_object($p))
-			$this->Driver=$p;
-		else
+		if($host instanceof \MySQLi)
 		{
-			$this->params=$p;
-			$this->params['query']=[];
-
-			if(isset($p['now']))
-				$this->Connect();
-			else#При некорректном запросе - отключим отображение файла и номера строки (в момент запроса не важно, где был создан объект этого класса)
-				$this->params['file']=null;
+			$this->M=$host;
+			return;
 		}
-	}
 
-	/** Деструктор */
-	public function __destruct()
-	{
-		if(isset($this->Driver))
-			$this->Driver->close();
-	}
-
-	/** Выполнение подключения к БД
-	 * @throws EE_DB */
-	protected function Connect():void
-	{
-		if(!isset($this->params['host'],$this->params['user'],$this->params['pass'],$this->params['db']))
-			throw new EE_DB('lack_of_data',EE_DB::CONNECT,null,$this->params+BugFileLine(static::class));
-
-		$M=Eleanor\QuietExecution(fn()=>new \MySQLi($this->params['host'],$this->params['user'],$this->params['pass'],$this->params['db']));
+		$M=Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
-			throw new EE_DB('connect',EE_DB::CONNECT,null,$this->params+['error'=>$M?->connect_error ?? 'Connect error','errno'=>$M?->connect_errno ?? 0]+BugFileLine(static::class));
+			throw new EE_DB('connect',EE_DB::CONNECT,null,compact('host','user','pass','db','port','socket')+['error'=>$M?->connect_error ?? 'Connect error','errno'=>$M?->connect_errno ?? 0]+BugFileLine(static::class));
 
 		$M->autocommit(true);
-		$M->set_charset($this->params['charset'] ?? 'utf8mb4');
+		$M->set_charset($charset);
 
-		$this->Driver=$M;
-		$this->db=$this->params['db'];
+		$this->M=$M;
 
-		if($this->params['sync'])
+		if($sync)
 			$this->SyncTimeZone();
-
-		foreach($this->params['query'] as $q)
-			$this->Driver->query($q);
-
-		unset($this->params);
 	}
 
-	/** Получение $this->Driver
+	public function __destruct()
+	{
+		$this->M->close();
+	}
+
+	/** "Прокси" для доступа к свойствам объекта MySQLi
 	 * @param string $n Имя
 	 * @throws EE
 	 * @return mixed */
 	public function __get(string$n):mixed
 	{
-		if($n=='Driver')
-		{
-			$this->Connect();
-			return$this->Driver;
-		}
+		if(property_exists($this->M,$n))
+			return $this->M->$n;
 
 		return parent::__get($n);
 	}
 
-	/** Обертка для упрощенного доступа к методам объектов MySQLi и результата MySQLi
+	/** "Прокси" для доступа к методам объектов MySQLi
 	 * @param string $n Имя вызываемого метода
 	 * @param array $p Параметры вызова
 	 * @throws EE
 	 * @return mixed */
 	public function __call(string$n,array$p):mixed
 	{
-		if(method_exists($this->Driver,$n))
-			return call_user_func_array([$this->Driver,$n],$p);
+		if(method_exists($this->M,$n))
+			return call_user_func_array([$this->M,$n],$p);
 
 		return parent::__call($n,$p);
 	}
 
 	/** Синхронизация времени БД со временем PHP (применение часового пояса). Синхронизируются только поля типа
 	 * TIMESTAMP */
-	protected function SyncTimeZone():void
+	public function SyncTimeZone():void
 	{
 		$t=date_offset_get(date_create());
 		$s=$t>0 ? '+' : '-';
 		$t=abs($t);
 		$s.=floor($t/3600).':'.($t%3600);
 
-		if(isset($this->Driver))
-			$this->Driver->query("SET TIME_ZONE='{$s}'");
-		else
-			$this->params['query']['sync']="SET TIME_ZONE='{$s}'";
+		$this->M->query("SET TIME_ZONE='{$s}'");
 	}
 
 	/** Старт транзакции */
 	public function Transaction():void
 	{
-		$this->Driver->autocommit(false);
+		$this->M->autocommit(false);
 	}
 
 	/** Подтверждение транзакции */
 	public function Commit():void
 	{
-		$this->Driver->commit();
-		$this->Driver->autocommit(true);
+		$this->M->commit();
+		$this->M->autocommit(true);
 	}
 
 	/** Откат транзакции */
 	public function RollBack():void
 	{
-		$this->Driver->rollback();
-		$this->Driver->autocommit(true);
+		$this->M->rollback();
+		$this->M->autocommit(true);
 	}
 
 	/** Выполнение SQL запроса в базу
-	 * @param string|array $q SQL запрос (в случае array, будет использовано multi_query)
+	 * @param string $q SQL запрос
 	 * @param int $mode
 	 * @throws EE_DB
-	 * @return bool|\mysqli_result|\mysqli */
-	public function Query(string|array$q,int$mode=MYSQLI_STORE_RESULT):bool|\mysqli_result|\mysqli
+	 * @return bool|\mysqli_result */
+	public function Query(string$q,int$mode=MYSQLI_STORE_RESULT):bool|\mysqli_result
 	{
-		$isa=is_array($q);
-		if($isa)
-			$q=join(';',$q);
-
-		if(!isset($this->Driver))
-			$this->Connect();
-
-		if($isa)
-		{
-			$R=$this->Driver->multi_query($q);
-			$return_r=false;
-		}
-		elseif($mode===false)
-		{
-			$R=$this->Driver->real_query($q);
-			$return_r=false;
-		}
-		else
-		{
-			$R=$this->Driver->query($q,$mode);
-			$return_r=$mode!==\MYSQLI_ASYNC;
-		}
+		$R=$this->M->query($q,$mode);
 
 		if($R===false)
 		{
 			$extra=[
 				'query'=>$q,
-				'error'=>$q ? $this->Driver->error : 'Empty query',
-				'errno'=>$q ? $this->Driver->errno : 0
+				'error'=>$q ? $this->M->error : 'Empty query',
+				'errno'=>$q ? $this->M->errno : 0
 			];
 
 			throw new EE_DB('query',EE_DB::QUERY,null,$extra+BugFileLine(static::class));
 		}
 
-		return$return_r ? $R : $this->Driver;
+		return $R;
 	}
 
 
@@ -208,7 +153,7 @@ class MySQL extends Eleanor\BaseClass
 
 		$this->Query("INSERT {$ext} INTO `{$t}`".$this->GenerateInsert($a).$odku);
 
-		return$this->Driver->insert_id;
+		return$this->M->insert_id;
 	}
 
 	/** Обертка для удобного осуществления REPLACE запросов
@@ -221,7 +166,7 @@ class MySQL extends Eleanor\BaseClass
 	{
 		$this->Query("REPLACE {$ext} INTO `{$t}` ".$this->GenerateInsert($a));
 
-		return$this->Driver->affected_rows;
+		return$this->M->affected_rows;
 	}
 
 	/** Генерация INSERT запроса из данных в массиве
@@ -229,7 +174,8 @@ class MySQL extends Eleanor\BaseClass
 	 * [ 'field1'=>'value1', 'field2'=>'value2' ] или
 	 * [ 'field1'=>[ 'values11', 'value12' ], 'field2'=>[ 'value21', 'value22' ] ] или
 	 * [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
-	 * @return string */
+	 * @return string
+	 * @throws EE_DB */
 	public function GenerateInsert(array$a):string
 	{
 		#Detecting [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
@@ -297,7 +243,7 @@ class MySQL extends Eleanor\BaseClass
 		else
 			$this->Query($q);
 
-		return$this->Driver->affected_rows;
+		return$this->M->affected_rows;
 	}
 
 	/** Обертка для удобного осуществления DELETE запросов
@@ -322,7 +268,7 @@ class MySQL extends Eleanor\BaseClass
 		else
 			$this->Query($q);
 
-		return$this->Driver->affected_rows;
+		return$this->M->affected_rows;
 	}
 
 	/** Преобразование массива в последовательность для конструкции IN(). Данные автоматически экранируются
@@ -382,10 +328,7 @@ class MySQL extends Eleanor\BaseClass
 		if($d instanceof \Closure)
 			return$d();
 
-		if(!isset($this->Driver))
-			$this->Connect();
-
-		$d=$this->Driver->real_escape_string((string)$d);
+		$d=$this->M->real_escape_string((string)$d);
 
 		return$q ? "'{$d}'" : $d;
 	}
@@ -395,17 +338,14 @@ class MySQL extends Eleanor\BaseClass
 	 * @param array $params Параметры запроса
 	 * @param bool $result Флаг возврата результата
 	 * @throws EE_DB
-	 * @return \MySQLi_stmt | \MySQLi_result в зависимости от $result В случае UPDATE или INSERT запросов, возвращает объект MySQLi_stmt вне зависимости от $result */
-	public function Execute(string$q,array$params=[],bool$result=true):\MySQLi_stmt|\MySQLi_result
+	 * @return \MySQLi_result | \MySQLi_stmt (в зависимости от $result) */
+	public function Execute(string$q,array$params=[],bool$result=true):\MySQLi_result|\MySQLi_stmt
 	{
 		if(!$params)
 			throw new EE_DB('No data supplied for parameters in prepared statement',EE_DB::PREPARED,null,BugFileLine(static::class));
 
-		if(!isset($this->Driver))
-			$this->Connect();
-
 		/** @var \MySQLi_stmt $stmt */
-		$stmt=$this->Driver->prepare($q);
+		$stmt=$this->M->prepare($q);
 		$types='';
 
 		foreach($params as $v)

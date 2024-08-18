@@ -29,7 +29,6 @@ class EE_DB extends EE
 		$l10n=new L10n('ee_db');
 
 		$message=match($message){
-			'lack_of_data'=>$l10n['lack_of_data'],
 			'connect'=>$l10n['connect']($extra['error'],$extra['errno'],$extra['db']),
 			'query','prepared'=>$l10n['query']($extra['error'],$extra['errno']),
 			default=>$message
@@ -57,7 +56,7 @@ class EE_DB extends EE
 				$data['n']??=0;#Counter
 				$data['n']++;
 
-				$data['u']=Url::$current;
+				$data['u']=Uri::$current;
 				$data['d']=date('Y-m-d H:i:s');
 				$data['l']=$this->line;
 				$data['m']=$this->message;

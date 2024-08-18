@@ -16,8 +16,8 @@ class MemCache implements Eleanor\Interfaces\Cache
 	/** @var array Ключи находящихся в кэше */
 	private array $names;
 
-	/** @var \Memcache Объект */
-	public \Memcache $M;#Объект MemCache-a
+	/** @var \Memcache Объект MemCache-a */
+	public \Memcache $M;
 
 	/** @param string $u Уникализации кэша (на одной кэш машине может быть запущено несколько копий Eleanor)
 	 * @throws Eleanor\Classes\EE */
