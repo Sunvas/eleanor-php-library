@@ -91,7 +91,7 @@ class MySQL extends Eleanor\BaseClass
 		$this->M->query("SET TIME_ZONE='{$s}'");
 	}
 
-	/** Старт транзакции */
+	/** Начало транзакции */
 	public function Transaction():void
 	{
 		$this->M->autocommit(false);
@@ -135,57 +135,83 @@ class MySQL extends Eleanor\BaseClass
 	}
 
 
-	public const string IGNORE='IGNORE';
+	public const string IGNORE=' IGNORE';
 
 	/** Обертка для удобного осуществления INSERT запросов
 	 * @param string $t Имя таблицы, куда необходимо вставить данные
-	 * @param array $a Данные. С форматами можно ознакомиться в GenerateInsert.
-	 * @param string $ext Для запросов INSERT IGNORE значение должно быть IGNORE, для ON DUPLICATE KEY UPDATE - содержимое обновления
+	 * @param array $d Данные. Форматы описаны в методе Insert4Query
+	 * @param bool|string $ignore_odku Флаг IGNORE или содержимое ON DUPLICATE KEY UPDATE
+	 * @param ?array $params Параметры для Prepared statements, при NULL будет вызвана Query
 	 * @return int Insert ID
 	 * @throws EE_DB */
-	public function Insert(string$t,array$a,string$ext=self::IGNORE):int
+	public function Insert(string$t,array$d,bool|string$ignore_odku=true,?array$params=[]):int
 	{
-		//Обычно после ON DUPLICATE KEY UPDATE используется =
-		if(str_contains($ext,'='))
-			[$odku,$ext]=['ON DUPLICATE KEY UPDATE '.$ext,''];
-		else
+		if(is_bool($ignore_odku))
+		{
+			$ext=$ignore_odku ? self::IGNORE : '';
 			$odku='';
+		}
+		else
+		{
+			$ext='';
+			$odku='ON DUPLICATE KEY UPDATE '.$ignore_odku;
+		}
 
-		$this->Query("INSERT {$ext} INTO `{$t}`".$this->GenerateInsert($a).$odku);
+		$insert=null;
+
+		if($params!==null)
+		{
+			[$insert,$params1]=static::Insert4Prepared($d);
+			array_unshift($params,...$params1);
+		}
+
+		if($params)
+			return$this->Execute("INSERT{$ext} INTO `{$t}`".$insert.$odku,$params,false)->insert_id;
+
+		$insert??=$this->Insert4Query($d);
+		$this->Query("INSERT{$ext} INTO `{$t}`".$insert.$odku);
 
 		return$this->M->insert_id;
 	}
 
 	/** Обертка для удобного осуществления REPLACE запросов
 	 * @param string $t Имя таблицы, куда необходимо вставить данные
-	 * @param array $a Данные. С форматами можно ознакомиться в GenerateInsert
-	 * @param string $ext Для запросов REPLACE IGNORE значение должно быть IGNORE
+	 * @param array $d Данные. Форматы описаны в методе Insert4Query
+	 * @param bool $ignore Флаг IGNORE
+	 * @param bool $query Флаг вызова query, вместо execute
 	 * @return int Affected rows
 	 * @throws EE_DB */
-	public function Replace(string$t,array$a,string$ext=''):int
+	public function Replace(string$t,array$d,bool$ignore=false,bool$query=false):int
 	{
-		$this->Query("REPLACE {$ext} INTO `{$t}` ".$this->GenerateInsert($a));
+		$ext=$ignore ? self::IGNORE : '';
 
-		return$this->M->affected_rows;
+		if($query)
+		{
+			$this->Query("REPLACE{$ext} INTO `{$t}` ".$this->Insert4Query($d));
+
+			return$this->M->affected_rows;
+		}
+
+		[$insert,$params]=static::Insert4Prepared($d);
+		return$this->Execute("REPLACE{$ext} INTO `{$t}` ".$insert,$params,false)->affected_rows;
 	}
 
-	/** Генерация INSERT запроса из данных в массиве
-	 * @param array $a Массив данных в одном из форматов:
+	/** Генерация секции INSERT для Query
+	 * @param array $d Данные в одном из форматов:
 	 * [ 'field1'=>'value1', 'field2'=>'value2' ] или
 	 * [ 'field1'=>[ 'values11', 'value12' ], 'field2'=>[ 'value21', 'value22' ] ] или
 	 * [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
-	 * @return string
-	 * @throws EE_DB */
-	public function GenerateInsert(array$a):string
+	 * @return string */
+	public function Insert4Query(array$d):string
 	{
 		#Detecting [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
-		if(array_is_list($a))
+		if(array_is_list($d))
 		{
-			$k=array_key_first($a);
-			$fields=array_keys($a[$k]);
+			$k=array_key_first($d);
+			$fields=array_keys($d[$k]);
 			$values=[];
 
-			foreach($a as $input)
+			foreach($d as $input)
 			{
 				$group=[];
 
@@ -199,103 +225,163 @@ class MySQL extends Eleanor\BaseClass
 		}
 		else
 		{
-			$fields='(`'.join('`,`',array_keys($a)).'`)';
+			$fields='(`'.join('`,`',array_keys($d)).'`)';
 
-			$values=array_values($a);
+			$values=array_values($d);
 			$values=array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
 			$values=array_map(null,...$values);//Из строк в столбцы
-			$escape=[$this,'Escape'];
-			$values=array_map(fn($item)=>'('.join(',',array_map($escape,$item)).')',$values);
+			$values=array_map(fn($item)=>'('.join(',',array_map($this->Escape(...),$item)).')',$values);
 		}
 
 		return $fields.'VALUES'.join(',',$values);
 	}
 
-	/** Обертка для удобного осуществления UPDATE запросов
-	 * @param string $t Имя таблицы, где необходимо обновить данные
-	 * @param array $a Массив изменяемых данных. С форматами можно ознакомиться в GenerateInsert
-	 * @param string|array $w Условие обновления. Секция WHERE, без ключевого слова WHERE.
-	 * @param string|array $ext [Для запросов UPDATE IGNORE значение должно быть IGNORE]
-	 * @param array $params Параметры для Prepared statements
-	 * @return int Affected rows
-	 * @throws EE_DB */
-	public function Update(string$t,array$a,string|array$w='',string|array$ext=self::IGNORE,array$params=[]):int
+	/** Генерация секции INSERT для Prepared Statements
+	 * @param array $d Описание смотреть в методе Insert4Query
+	 * @return array [string INSERT,array $params] */
+	public static function Insert4Prepared(array$d):array
 	{
-		if(!$a)
-			return 0;
+		$params=[];
 
-		if(is_array($ext))
+		if(array_is_list($d))
 		{
-			$params=$ext;
-			$ext=self::IGNORE;
+			$k=array_key_first($d);
+			$fields=array_keys($d[$k]);
+			$values=[];
+
+			foreach($d as $input)
+			{
+				$group=[];
+
+				foreach($fields as $index=>$field)
+				{
+					$v=$input[$field] ?? $input[$index] ?? null;
+
+					if($v instanceof \Closure)
+						$v=$v();
+					else
+					{
+						$params[]=$v;
+						$v='?';
+					}
+
+					$group[]=$v;
+				}
+
+				$values[]='('.join(',',$group).')';
+			}
+
+			$fields='(`'.join('`,`',$fields).'`)';
+		}
+		else
+		{
+			$fields='(`'.join('`,`',array_keys($d)).'`)';
+			$map=function($v)use(&$params){
+				if($v instanceof \Closure)
+					return$v();
+
+				$params[]=$v;
+				return'?';
+			};
+
+			$values=array_values($d);
+			$values=array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
+			$values=array_map(null,...$values);//Из строк в столбцы
+			$values=array_map(fn($item)=>'('.join(',',array_map($map,$item)).')',$values);
 		}
 
-		$q="UPDATE {$ext} `{$t}` SET ";
+		return[$fields.'VALUES'.join(',',$values),$params];
+	}
 
-		foreach($a as $k=>$v)
-			$q.="`{$k}`=".$this->Escape($v).',';
+	/** Обертка для удобного осуществления UPDATE запросов
+	 * @param string $t Имя таблицы, где необходимо обновить данные
+	 * @param array $d Массив изменяемых данных. С форматами можно ознакомиться в Insert4Query
+	 * @param string|array $w Условие обновления. Секция WHERE, без ключевого слова WHERE.
+	 * @param ?array $params Параметры для Prepared statements, при NULL будет вызвана Query
+	 * @param bool $ignore Флаг IGNORE
+	 * @return int Affected rows
+	 * @throws EE_DB */
+	public function Update(string$t,array$d,string|array$w='',?array$params=[],bool$ignore=true):int
+	{
+		if(!$d)
+			return 0;
+
+		$ext=$ignore ? self::IGNORE : '';
+		$q="UPDATE{$ext} `{$t}` SET ";
+
+		if($params===null)
+		{
+			foreach($d as $k=>$v)
+				$q.="`{$k}`=".$this->Escape($v).',';
+		}
+		else
+		{
+			foreach($d as $k=>$v)
+			{
+				if($v instanceof \Closure)
+				{
+					unset($d[$k]);
+					$v=$v();
+				}
+				else
+					$v='?';
+
+				$q.="`{$k}`={$v},";
+			}
+
+			array_unshift($params,...array_values($d));
+		}
 
 		$q=rtrim($q,',');
 		$q.=$this->Where($w);
 
 		if($params)
-			$this->Execute($q,$params);
-		else
-			$this->Query($q);
+			return$this->Execute($q,$params,false)->affected_rows;
 
+		$this->Query($q);
 		return$this->M->affected_rows;
 	}
 
 	/** Обертка для удобного осуществления DELETE запросов
 	 * @param string $t Имя таблицы, откуда необходимо удалить данные
 	 * @param string|array $w Секция WHERE, без ключевого слова WHERE. Если не заполнять - выполнится TRUNCATE запрос.
-	 * @param string|array $ext [Для запросов DELETE IGNORE значение должно быть IGNORE]
-	 * @param array $params Параметры для Prepared statements
-	 * @throws EE_DB
-	 * @return int Affected rows */
-	public function Delete(string$t,string|array$w='',string|array$ext=self::IGNORE,array$params=[]):int
+	 * @param array $params Параметры для Prepared statements, значение $w в этом случае должно быть строковым
+	 * @param bool $ignore Флаг IGNORE
+	 * @return int Affected rows
+	 * @throws EE_DB */
+	public function Delete(string$t,string|array$w='',array$params=[],bool$ignore=true):int
 	{
-		if(is_array($ext))
-		{
-			$params=$ext;
-			$ext=self::IGNORE;
-		}
-
-		$q=$w ? "DELETE {$ext} FROM `{$t}`".$this->Where($w) : "TRUNCATE TABLE `{$t}`";
+		$ext=$ignore ? self::IGNORE : '';
+		$q=$w ? "DELETE{$ext} FROM `{$t}`".$this->Where($w) : "TRUNCATE TABLE `{$t}`";
 
 		if($params)
-			$this->Execute($q,$params);
-		else
-			$this->Query($q);
+			return$this->Execute($q,$params,false)->affected_rows;
 
+		$this->Query($q);
 		return$this->M->affected_rows;
 	}
 
 	/** Преобразование массива в последовательность для конструкции IN(). Данные автоматически экранируются
-	 * @param mixed $a Данные для конструкции IN
+	 * @param array $a Данные для конструкции IN
 	 * @param bool $not Включение конструкции NOT IN. Для оптимизации запросов, по возможности используется = вместо IN
-	 * @return string
-	 * @throws EE_DB */
-	public function In(mixed$a,bool$not=false):string
+	 * @return string */
+	public function In(array$a,bool$not=false):string
 	{
-		if(is_array($a) and count($a)==1)
-			$a=reset($a);
-
-		if(is_array($a))
+		if(count($a)==1)
 		{
-			foreach($a as &$v)
-				$v=$this->Escape($v);
-
-			return($not ? ' NOT' : '').' IN ('.join(',',$a).')';
+			$a=reset($a);
+			return($not ? '!' : '').'='.$this->Escape($a);
 		}
 
-		return($not ? '!' : '').'='.$this->Escape($a);
+		foreach($a as &$v)
+			$v=$this->Escape($v);
+
+		return($not ? ' NOT' : '').' IN ('.join(',',$a).')';
 	}
 
 	/** Генерация секции WHERE
 	 * @param string|array $w Условия
-	 * @return string
-	 * @throws EE_DB */
+	 * @return string */
 	public function Where(string|array$w):string
 	{
 		if(is_array($w))
@@ -312,11 +398,13 @@ class MySQL extends Eleanor\BaseClass
 	/** Экранирование опасных символов в строках
 	 * @param mixed $d Значение для экранирования
 	 * @param bool $q Флаг включения одинарных кавычек в начало и в конец результата
-	 * @return mixed
-	 * @throws EE_DB */
+	 * @return mixed */
 	public function Escape(mixed$d,bool$q=true):mixed
 	{
-		if($d ===null)
+		if(static::IsEnum($d))
+			$d=$d->value;
+
+		if($d===null)
 			return'NULL';
 
 		if(is_int($d) or is_float($d))
@@ -325,12 +413,23 @@ class MySQL extends Eleanor\BaseClass
 		if(is_bool($d))
 			return(int)$d;
 
+		if(is_array($d))
+			return$this->In($d);
+
 		if($d instanceof \Closure)
 			return$d();
 
 		$d=$this->M->real_escape_string((string)$d);
 
 		return$q ? "'{$d}'" : $d;
+	}
+
+	/** Проверка, является ли объект enum-ом
+	 * @param mixed $o Проверяемый объект
+	 * @return bool */
+	public static function IsEnum(mixed$o):bool
+	{
+		return is_object($o) and enum_exists($o::class,false);
 	}
 
 	/** Prepared statements shortcut. Я знаю о существовании mysqli::execute_query, проблема в том что каждый элемент в params интерпретируется как строка "Each value is treated as a string.":
@@ -349,10 +448,15 @@ class MySQL extends Eleanor\BaseClass
 		$types='';
 
 		foreach($params as $v)
+		{
+			if(static::IsEnum($v))
+				$v=$v->value;
+
 			if(is_int($v))
 				$types.='i';
 			else
 				$types.=is_float($v) ? 'd' : 's';
+		}
 
 		if($types)
 			$stmt->bind_param($types, ...$params);

@@ -376,6 +376,7 @@ Library::$old_exception_handler=set_exception_handler(function(\Throwable$E){
 		#Заплатка на случай отключенного автолоадера
 		and (class_exists('\Eleanor\Classes\EE',false) or include(__DIR__.'/classes/ee.php')))
 	{
+		$c=EE::PHP;
 		$E2=new EE($m,EE::PHP,$E);
 		$E2->Log();
 	}
