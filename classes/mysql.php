@@ -38,7 +38,7 @@ class MySQL extends Eleanor\BaseClass
 		$M=Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
-			throw new EE_DB('connect',EE_DB::CONNECT,null,compact('host','user','pass','db','port','socket')+['error'=>$M?->connect_error ?? 'Connect error','errno'=>$M?->connect_errno ?? 0]+BugFileLine(static::class));
+			throw new EE_DB($M?->connect_error ?? 'Connect error',EE_DB::CONNECT,null,compact('host','user','pass','db','port','socket')+['errno'=>$M?->connect_errno ?? 0]+BugFileLine(static::class));
 
 		$M->autocommit(true);
 		$M->set_charset($charset);
@@ -124,11 +124,10 @@ class MySQL extends Eleanor\BaseClass
 		{
 			$extra=[
 				'query'=>$q,
-				'error'=>$q ? $this->M->error : 'Empty query',
 				'errno'=>$q ? $this->M->errno : 0
 			];
 
-			throw new EE_DB('query',EE_DB::QUERY,null,$extra+BugFileLine(static::class));
+			throw new EE_DB($q ? $this->M->error : 'Empty query',EE_DB::QUERY,null,$extra+BugFileLine(static::class));
 		}
 
 		return $R;
@@ -441,7 +440,7 @@ class MySQL extends Eleanor\BaseClass
 	public function Execute(string$q,array$params=[],bool$result=true):\MySQLi_result|\MySQLi_stmt
 	{
 		if(!$params)
-			throw new EE_DB('No data supplied for parameters in prepared statement',EE_DB::PREPARED,null,BugFileLine(static::class));
+			throw new EE_DB('No data supplied for parameters of prepared statement',EE_DB::PREPARED,null,['query'=>$q]+BugFileLine(static::class));
 
 		/** @var \MySQLi_stmt $stmt */
 		$stmt=$this->M->prepare($q);
@@ -473,12 +472,12 @@ class MySQL extends Eleanor\BaseClass
 			if($stmt->errno)
 			{
 				$extra=[
+					'query'=>$q,
 					'params'=>$params,
-					'errno'=>$stmt->errno,
-					'error'=>$stmt->error
+					'errno'=>$stmt->errno
 				];
 
-				throw new EE_DB('prepared',EE_DB::PREPARED,null,$extra+BugFileLine(static::class));
+				throw new EE_DB($stmt->error,EE_DB::PREPARED,null,$extra+BugFileLine(static::class));
 			}
 		}
 

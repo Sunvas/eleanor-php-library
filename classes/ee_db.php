@@ -28,9 +28,9 @@ class EE_DB extends EE
 	{
 		$l10n=new L10n('ee_db');
 
-		$message=match($message){
-			'connect'=>$l10n['connect']($extra['error'],$extra['errno'],$extra['db']),
-			'query','prepared'=>$l10n['query']($extra['error'],$extra['errno']),
+		$message=match($code){
+			self::CONNECT=>$l10n['connect']($message,$extra['errno'],$extra['db']),
+			self::QUERY,self::PREPARED=>$l10n['query']($message,$extra['errno'] ?? null),
 			default=>$message
 		};
 
@@ -62,13 +62,13 @@ class EE_DB extends EE
 				$data['m']=$this->message;
 				$data['f']=$this->file;
 
-				$log=$this->extra['error'].PHP_EOL;
+				$log=$this->message.PHP_EOL;
 
 				switch($this->code)
 				{
 					case self::CONNECT:
 						//Если проблема с конкретным пользователем - запишем данные пользователя в лог
-						if(str_contains($this->extra['error'],'Access denied for user'))
+						if(str_contains($this->message,'Access denied for user'))
 						{
 							$data['h']=$this->extra['host'] ?? '';
 							$data['u']=$this->extra['user'] ?? '';
@@ -95,7 +95,6 @@ LOG;
 
 						$log.=<<<LOG
 Query: {$data['q']}
-Error: {$data['e']}
 File: {$data['f']}[{$data['l']}]
 Last happened: {$data['d']}, total: {$data['n']}
 LOG;
@@ -103,7 +102,7 @@ LOG;
 
 					case self::PREPARED:
 						$data['q']=$this->extra['query'];
-						$data['p']=serialize($this->extra['params']);
+						$data['p']=isset($this->extra['params']) ? serialize($this->extra['params']) : '-';
 
 						$log.=<<<LOG
 Query: {$data['q']}

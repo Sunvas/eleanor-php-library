@@ -85,8 +85,12 @@ class EE extends \Exception
 				$data['m']=$this->getMessage();
 				$data['f']=$this->file;
 
-				$log=<<<LOG
-{$data['m']}
+				$log=$this->message.PHP_EOL;
+
+				if(isset($this->extra['input']))
+					$log.='JSONed input: '.json_encode($this->extra['input'],JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL;
+
+				$log.=<<<LOG
 File: {$data['f']}[{$data['l']}]
 URL: {$data['u']}
 Last happened: {$data['d']}, total: {$data['n']}

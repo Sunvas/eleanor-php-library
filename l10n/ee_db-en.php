@@ -3,7 +3,7 @@ $ent=ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE | ENT_DISALLOWED;
 
 return[
 	/** Ошибка при подключении к БД */
-	'connect'=>function($errno,$error,$db)use($ent){
+	'connect'=>function($error,$errno,$db)use($ent){
 		$error=$errno ? htmlspecialchars($error,$ent,Eleanor\CHARSET,false) : '';
 
 		if($error)
@@ -19,7 +19,7 @@ HTML;
 	},
 
 	/** Ошибка в запросе */
-	'query'=>function($errno,$error)use($ent){
+	'query'=>function($error,$errno)use($ent){
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
 		return<<<HTML

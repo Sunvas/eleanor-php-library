@@ -61,7 +61,7 @@ class Cache extends \Eleanor\BaseClass
 
 		if($eternal)
 		{
-			if(preg_match('#^[a-z\d.\-_]+$#i',$key)>0)
+			if(preg_match('#^[a-z\d.\-_]+$#i',$key)===0)
 				throw new EE('Invalid eternal key',EE::PHP,null,[ 'input'=>$key ]);
 
 			file_put_contents($this->storage."/{$key}.php",'<?php return '.var_export($value,true).';');
