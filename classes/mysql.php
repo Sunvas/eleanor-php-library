@@ -38,7 +38,7 @@ class MySQL extends Eleanor\BaseClass
 		$M=Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
-			throw new EE_DB($M?->connect_error ?? 'Connect error',EE_DB::CONNECT,null,compact('host','user','pass','db','port','socket')+['errno'=>$M?->connect_errno ?? 0]+BugFileLine(static::class));
+			throw new EE_DB($M?->connect_error ?? 'Connect error',EE_DB::CONNECT,null,compact('host','user','pass','db','port','socket')+['errno'=>$M?->connect_errno ?? 0]+BugFileLine($this::class));
 
 		$M->autocommit(true);
 		$M->set_charset($charset);
@@ -127,7 +127,7 @@ class MySQL extends Eleanor\BaseClass
 				'errno'=>$q ? $this->M->errno : 0
 			];
 
-			throw new EE_DB($q ? $this->M->error : 'Empty query',EE_DB::QUERY,null,$extra+BugFileLine(static::class));
+			throw new EE_DB($q ? $this->M->error : 'Empty query',EE_DB::QUERY,null,$extra+BugFileLine($this::class));
 		}
 
 		return $R;
@@ -160,7 +160,7 @@ class MySQL extends Eleanor\BaseClass
 
 		if($params!==null)
 		{
-			[$insert,$params1]=static::Insert4Prepared($d);
+			[$insert,$params1]=$this::Insert4Prepared($d);
 			array_unshift($params,...$params1);
 		}
 
@@ -191,7 +191,7 @@ class MySQL extends Eleanor\BaseClass
 			return$this->M->affected_rows;
 		}
 
-		[$insert,$params]=static::Insert4Prepared($d);
+		[$insert,$params]=$this::Insert4Prepared($d);
 		return$this->Execute("REPLACE{$ext} INTO `{$t}` ".$insert,$params,false)->affected_rows;
 	}
 
@@ -255,14 +255,15 @@ class MySQL extends Eleanor\BaseClass
 				foreach($fields as $index=>$field)
 				{
 					$v=$input[$field] ?? $input[$index] ?? null;
+					$bypass=static::Bypass($v);
 
-					if($v instanceof \Closure)
-						$v=$v();
-					else
+					if($bypass===null)
 					{
 						$params[]=$v;
 						$v='?';
 					}
+					else
+						$v=$bypass;
 
 					$group[]=$v;
 				}
@@ -276,8 +277,10 @@ class MySQL extends Eleanor\BaseClass
 		{
 			$fields='(`'.join('`,`',array_keys($d)).'`)';
 			$map=function($v)use(&$params){
-				if($v instanceof \Closure)
-					return$v();
+				$bypass=static::Bypass($v);
+
+				if($bypass!==null)
+					return$bypass;
 
 				$params[]=$v;
 				return'?';
@@ -317,13 +320,15 @@ class MySQL extends Eleanor\BaseClass
 		{
 			foreach($d as $k=>$v)
 			{
-				if($v instanceof \Closure)
+				$bypass=$this::Bypass($v);
+
+				if($bypass===null)
+					$v='?';
+				else
 				{
 					unset($d[$k]);
-					$v=$v();
+					$v=$bypass;
 				}
-				else
-					$v='?';
 
 				$q.="`{$k}`={$v},";
 			}
@@ -394,73 +399,58 @@ class MySQL extends Eleanor\BaseClass
 		return $w ? ' WHERE '.$w : '';
 	}
 
-	/** Экранирование опасных символов в строках
-	 * @param mixed $d Значение для экранирования
-	 * @param bool $q Флаг включения одинарных кавычек в начало и в конец результата
-	 * @return mixed */
-	public function Escape(mixed$d,bool$q=true):mixed
+	/** Обход экранирование, если значение параметра является целым, дробным и т.п.
+	 * @param mixed $p Значение параметра
+	 * @return mixed NULL если значение нуждается в экранировании */
+	public static function Bypass(mixed$p):mixed
 	{
-		if(static::IsEnum($d))
-			$d=$d->value;
-
-		if($d===null)
+		if($p===null)
 			return'NULL';
 
-		if(is_int($d) or is_float($d))
-			return$d;
+		if(is_int($p) or is_float($p))
+			return$p;
 
-		if(is_bool($d))
-			return(int)$d;
+		if(is_bool($p))
+			return(int)$p;
 
-		if(is_array($d))
-			return$this->In($d);
+		if($p instanceof \Closure)
+			return$p() ?? 'NULL';
 
-		if($d instanceof \Closure)
-			return$d();
-
-		$d=$this->M->real_escape_string((string)$d);
-
-		return$q ? "'{$d}'" : $d;
+		return null;
 	}
 
-	/** Проверка, является ли объект enum-ом
-	 * @param mixed $o Проверяемый объект
-	 * @return bool */
-	public static function IsEnum(mixed$o):bool
+	/** Экранирование опасных символов в строках
+	 * @param mixed $p Значение параметра для экранирования
+	 * @param bool $q Флаг включения одинарных кавычек в начало и в конец результата
+	 * @return mixed */
+	public function Escape(mixed$p,bool$q=true):mixed
 	{
-		return is_object($o) and enum_exists($o::class,false);
+		$bypass=$this::Bypass($p);
+
+		if($bypass!==null)
+			return$bypass;
+
+		if(is_array($p))
+			return$this->In($p);
+
+		$p=$this->M->real_escape_string((string)$p);
+
+		return$q ? "'{$p}'" : $p;
 	}
 
-	/** Prepared statements shortcut. Я знаю о существовании mysqli::execute_query, проблема в том что каждый элемент в params интерпретируется как строка "Each value is treated as a string.":
+	/** Prepared statements shortcut.
 	 * @param string $q Запрос
 	 * @param array $params Параметры запроса
 	 * @param bool $result Флаг возврата результата
 	 * @throws EE_DB
 	 * @return \MySQLi_result | \MySQLi_stmt (в зависимости от $result) */
-	public function Execute(string$q,array$params=[],bool$result=true):\MySQLi_result|\MySQLi_stmt
+	public function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt
 	{
 		if(!$params)
-			throw new EE_DB('No data supplied for parameters of prepared statement',EE_DB::PREPARED,null,['query'=>$q]+BugFileLine(static::class));
+			throw new EE_DB('No data supplied for parameters of prepared statement',EE_DB::PREPARED,null,['query'=>$q]+BugFileLine($this::class));
 
-		/** @var \MySQLi_stmt $stmt */
 		$stmt=$this->M->prepare($q);
-		$types='';
-
-		foreach($params as $v)
-		{
-			if(static::IsEnum($v))
-				$v=$v->value;
-
-			if(is_int($v))
-				$types.='i';
-			else
-				$types.=is_float($v) ? 'd' : 's';
-		}
-
-		if($types)
-			$stmt->bind_param($types, ...$params);
-
-		$stmt->execute();
+		$this::BindParams($stmt,$params);
 
 		if($result)
 		{
@@ -477,11 +467,39 @@ class MySQL extends Eleanor\BaseClass
 					'errno'=>$stmt->errno
 				];
 
-				throw new EE_DB($stmt->error,EE_DB::PREPARED,null,$extra+BugFileLine(static::class));
+				throw new EE_DB($stmt->error,EE_DB::PREPARED,null,$extra+BugFileLine($this::class));
 			}
 		}
 
 		return$stmt;
+	}
+
+	/** При прямой передаче параметров в mysqli::execute_query, каждый элемент из params интерпретируется как строка "Each value is treated as a string."
+	 * Этот же метод позволяет передать в prepared statement числа */
+	public static function BindParams(\MySQLi_stmt$stmt,array$params):bool
+	{
+		//Если массив целиком состоит из строковых значений
+		if(array_reduce($params,fn($carry,$item)=>$carry && is_string($item),true))
+			return$stmt->execute($params);
+
+		$types='';
+
+		foreach($params as &$p)
+			if(is_int($p))
+				$types.='i';
+			elseif(is_float($p))
+				$types.='d';
+			else
+			{
+				$types.='s';
+
+				if(!is_string($p))
+					$p=(string)$p;
+			}
+
+		$stmt->bind_param($types, ...$params);
+
+		return$stmt->execute();
 	}
 }
 

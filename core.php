@@ -30,11 +30,20 @@ define('Eleanor\W',stripos(PHP_OS,'win')===0);
 function BugFileLine(string$class):array
 {
 	$db=debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+	$found=false;
 
 	#2 это пропуск текущей функции и класс, который её вызвал
 	foreach(array_slice($db,1) as $item)
-		if(!isset($item['class']) or $item['class']!=$class)
+	{
+		if(!isset($item['class']))
 			return$item;
+
+		//Если в db встречается BaseClass, значит искомый элемент - следующий (вызов parent::__get)
+		if($item['class']==BaseClass::class)
+			$found=true;
+		elseif($found or $item['class']!=$class)
+			return$item;
+	}
 
 	return[];
 }
@@ -149,7 +158,7 @@ abstract class BaseClass
 
 		$E=new EE(
 			'Called undefined method '.$this::class.' -› '.$n,
-			EE::PHP,null,BugFileLine(static::class)
+			EE::PHP,null,BugFileLine($this::class)
 		);
 		$E->Log();
 
@@ -166,8 +175,8 @@ abstract class BaseClass
 	public function __get(string$n):mixed
 	{
 		$E=new EE(
-			'Trying to get value from the unknown variable '.static::class.' -› '.$n,	EE::PHP,null,
-			BugFileLine(static::class)
+			'Trying to get value from the unknown variable '.$this::class.' -› '.$n,	EE::PHP,null,
+			BugFileLine($this::class)
 		);
 		$E->Log();
 
