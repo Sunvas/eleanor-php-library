@@ -107,7 +107,6 @@ LOG;
 						$log.=<<<LOG
 Query: {$data['q']}
 Params: {$data['p']}
-Error: {$data['e']}
 File: {$data['f']}[{$data['l']}]
 Last happened: {$data['d']}, total: {$data['n']}
 LOG;

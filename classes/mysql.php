@@ -38,7 +38,7 @@ class MySQL extends Eleanor\BaseClass
 		$M=Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
-			throw new EE_DB($M?->connect_error ?? 'Connect error',EE_DB::CONNECT,null,compact('host','user','pass','db','port','socket')+['errno'=>$M?->connect_errno ?? 0]+BugFileLine($this::class));
+			throw new EE_DB($M?->connect_error ?? 'Connect error',EE_DB::CONNECT,null,compact('host','user','pass','db','port','socket')+['errno'=>$M?->connect_errno ?? 0]+BugFileLine());
 
 		$M->autocommit(true);
 		$M->set_charset($charset);
@@ -184,14 +184,15 @@ class MySQL extends Eleanor\BaseClass
 	{
 		$ext=$ignore ? self::IGNORE : '';
 
-		if($query)
+		[$insert,$params]=$query ? [$this->Insert4Query($d),false] : $this::Insert4Prepared($d);
+
+		if(!$params)
 		{
-			$this->Query("REPLACE{$ext} INTO `{$t}` ".$this->Insert4Query($d));
+			$this->Query("REPLACE{$ext} INTO `{$t}` ".$insert);
 
 			return$this->M->affected_rows;
 		}
 
-		[$insert,$params]=$this::Insert4Prepared($d);
 		return$this->Execute("REPLACE{$ext} INTO `{$t}` ".$insert,$params,false)->affected_rows;
 	}
 

@@ -25,14 +25,18 @@ defined('Eleanor\BASE_TIME')||define('Eleanor\BASE_TIME',mktime(0,0,0,1,1,2024))
 define('Eleanor\W',stripos(PHP_OS,'win')===0);
 
 /** Получение пути к файлу и номера строки с ошибкой
- * @param string $class - в нужном классе вызвать эту функцию с параметром static::class
+ * @param ?string $class Фильтр. Значение static::class в точке вызова
  * @return array ['file'=>,'line'=>N] */
-function BugFileLine(string$class):array
+function BugFileLine(?string$class=null):array
 {
 	$db=debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
 	$found=false;
 
-	#2 это пропуск текущей функции и класс, который её вызвал
+	#Баг предыдущего шага
+	if($class===null)
+		return$db[1];
+
+	#Поиск проблемного места (фильтр по классу)
 	foreach(array_slice($db,1) as $item)
 	{
 		if(!isset($item['class']))
@@ -385,7 +389,7 @@ Library::$old_exception_handler=set_exception_handler(function(\Throwable$E){
 		#Заплатка на случай отключенного автолоадера
 		and (class_exists('\Eleanor\Classes\EE',false) or include(__DIR__.'/classes/ee.php')))
 	{
-		$c=EE::PHP;
+		$c=$E instanceof \ValueError ? EE::DATA : EE::PHP;
 		$E2=new EE($m,EE::PHP,$E);
 		$E2->Log();
 	}
@@ -435,8 +439,7 @@ spl_autoload_register(function(string$c){
 
 		if(class_exists('\Eleanor\Classes\EE',false) or include(__DIR__.'/classes/ee.php'))
 		{
-			$bt=debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-			$extra=$bt[2] ?? [];
+			$extra=BugFileLine();
 
 			throw new EE($what.' not found: '.$c,EE::PHP,null,$extra);
 		}

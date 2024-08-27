@@ -39,9 +39,9 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 
 	/** Представление даты для человека
 	 * @param int|string $d Дата в обычном машинном формате, либо timestamp, 0 либо пустая строка - текущая дата
-	 * @param DateFormat $t
+	 * @param DateFormat $f
 	 * @return string */
-	public static function Date(int|string$d=0,DateFormat$t=DateFormat::HumanDateTime):string
+	public static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
 	{
 		if(!$d)
 			$d=time();
@@ -51,7 +51,7 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 		if(!$d)
 			return'';
 
-		return match($t){
+		return match($f){
 			DateFormat::Date=>date('Y-m-d',$d),
 			DateFormat::Time=>date('H:i:s',$d),
 			DateFormat::DateTime=>date('Y-m-d H:i:s',$d),

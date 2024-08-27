@@ -33,14 +33,14 @@ class L10n extends Eleanor\BaseClass implements \ArrayAccess, \Eleanor\Interface
 
 		if(!is_file($file))
 			throw new EE('Missing file '.$file,
-				EE::DATA,null,BugFileLine(static::class)
+				EE::PHP,null,BugFileLine()
 			);
 
 		$data=Eleanor\AwareInclude($file);
 
 		if(!is_array($data))
 			throw new EE('Wrong file format '.$file,
-				EE::DATA,null,BugFileLine(static::class)
+				EE::PHP,null,BugFileLine()
 			);
 
 		$this->data=$data;
@@ -80,14 +80,14 @@ class L10n extends Eleanor\BaseClass implements \ArrayAccess, \Eleanor\Interface
 	}
 
 	/** Получение языковой переменной
-	 * @param string $k Имя переменной
+	 * @param int|string $k Имя переменной
 	 * @throws EE
 	 * @return mixed */
 	public function offsetGet(mixed$k):mixed
 	{
 		return $this->data[$k] ?? throw new EE(
 			"Unable to get translation key '{$k}'",
-			EE::PHP,null,BugFileLine(static::class)
+			EE::PHP,null,BugFileLine()
 		);
 	}
 }
