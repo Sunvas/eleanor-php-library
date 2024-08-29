@@ -150,7 +150,7 @@ class Files extends Eleanor\BaseClass
 	/** Обновление каталога с файлами после внесения изменений. Следующий шаг после SymLink
 	 * @param string $temp Каталог, в котором происходили изменения
 	 * @param string $dest "Рабочий" каталог с файлами, прикрепленный к записи
-	 * @throws EE
+	 * @throws E
 	 * @return bool */
 	public static function UpdateDir(string$temp,string$dest):bool
 	{
@@ -206,7 +206,7 @@ class Files extends Eleanor\BaseClass
 					$orig=realpath($temp.DIRECTORY_SEPARATOR.$orig);
 
 				if(!is_file($orig) || dirname($orig)!=$dest)
-					throw new EE('DISPARATE_DIRS',EE::SYSTEM);
+					throw new E('DISPARATE_DIRS',E::SYSTEM);
 				#Файл переименовали?
 				elseif(basename($orig)!=$file)
 				{

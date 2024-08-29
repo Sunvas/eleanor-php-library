@@ -26,21 +26,21 @@ class L10n extends Eleanor\BaseClass implements \ArrayAccess, \Eleanor\Interface
 	 * ];
 	 * @param string $name Имя языкового файла
 	 * @param string $source Каталог-источник языковых файлов, обязательно с / в конце
-	 * @throws EE */
+	 * @throws E */
 	public function __construct(string$name,string$source=__DIR__.'/../l10n/')
 	{
 		$file=$source.($name ? $name.'-' : '').static::$code.'.php';
 
 		if(!is_file($file))
-			throw new EE('Missing file '.$file,
-				EE::PHP,null,BugFileLine()
+			throw new E('Missing file '.$file,
+				E::PHP,null,BugFileLine()
 			);
 
 		$data=Eleanor\AwareInclude($file);
 
 		if(!is_array($data))
-			throw new EE('Wrong file format '.$file,
-				EE::PHP,null,BugFileLine()
+			throw new E('Wrong file format '.$file,
+				E::PHP,null,BugFileLine()
 			);
 
 		$this->data=$data;
@@ -81,13 +81,13 @@ class L10n extends Eleanor\BaseClass implements \ArrayAccess, \Eleanor\Interface
 
 	/** Получение языковой переменной
 	 * @param int|string $k Имя переменной
-	 * @throws EE
+	 * @throws E
 	 * @return mixed */
 	public function offsetGet(mixed$k):mixed
 	{
-		return $this->data[$k] ?? throw new EE(
+		return $this->data[$k] ?? throw new E(
 			"Unable to get translation key '{$k}'",
-			EE::PHP,null,BugFileLine()
+			E::PHP,null,BugFileLine()
 		);
 	}
 }

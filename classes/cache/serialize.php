@@ -5,7 +5,7 @@
 	library@eleanor-cms.ru
 */
 namespace Eleanor\Classes\Cache;
-use Eleanor, Eleanor\Classes\EE, Eleanor\Classes\Files;
+use Eleanor, Eleanor\Classes\E, Eleanor\Classes\Files;
 
 /** Кэш-машина Serialize */
 class Serialize implements Eleanor\Interfaces\Cache
@@ -17,7 +17,7 @@ class Serialize implements Eleanor\Interfaces\Cache
 	protected string $path;
 
 	/** @param ?string $path Путь к файлам кэша
-	 * @throws EE */
+	 * @throws E */
 	public function __construct(?string$path=null)
 	{
 		$this->path=$path ?? $_SERVER['DOCUMENT_ROOT'].Eleanor\SITEDIR.'cache/';
@@ -26,7 +26,7 @@ class Serialize implements Eleanor\Interfaces\Cache
 			Files::MkDir($this->path);
 
 		if(!is_writeable($this->path))
-			throw new EE('Folder for %cache% is write-protected',EE::SYSTEM,null,['destination'=>$this->path]);
+			throw new E('Folder for %cache% is write-protected',E::SYSTEM,null,['destination'=>$this->path]);
 	}
 
 	/** Запись значения

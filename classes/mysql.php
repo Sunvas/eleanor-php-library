@@ -26,7 +26,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param bool $sync Флаг синхронизации времени БД с временем сервера
 	 * @param ?int $port Номер порта для попытки подключения к серверу MySQL
 	 * @param ?string $socket Сокет или именованный пайп
-	 * @throws EE_DB */
+	 * @throws EM */
 	public function __construct(null|string|\MySQLi$host=null,?string$user=null,#[\SensitiveParameter]?string$pass=null,?string$db=null,string$charset='utf8mb4',bool$sync=true,?int$port=null,?string$socket=null)
 	{
 		if($host instanceof \MySQLi)
@@ -38,7 +38,7 @@ class MySQL extends Eleanor\BaseClass
 		$M=Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
-			throw new EE_DB($M?->connect_error ?? 'Connect error',EE_DB::CONNECT,null,compact('host','user','pass','db','port','socket')+['errno'=>$M?->connect_errno ?? 0]+BugFileLine());
+			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno,params:compact('host','user','pass','db','port','socket'));
 
 		$M->autocommit(true);
 		$M->set_charset($charset);
@@ -56,7 +56,7 @@ class MySQL extends Eleanor\BaseClass
 
 	/** "Прокси" для доступа к свойствам объекта MySQLi
 	 * @param string $n Имя
-	 * @throws EE
+	 * @throws E
 	 * @return mixed */
 	public function __get(string$n):mixed
 	{
@@ -69,7 +69,7 @@ class MySQL extends Eleanor\BaseClass
 	/** "Прокси" для доступа к методам объектов MySQLi
 	 * @param string $n Имя вызываемого метода
 	 * @param array $p Параметры вызова
-	 * @throws EE
+	 * @throws E
 	 * @return mixed */
 	public function __call(string$n,array$p):mixed
 	{
@@ -114,21 +114,18 @@ class MySQL extends Eleanor\BaseClass
 	/** Выполнение SQL запроса в базу
 	 * @param string $q SQL запрос
 	 * @param int $mode
-	 * @throws EE_DB
-	 * @return bool|\mysqli_result */
-	public function Query(string$q,int$mode=MYSQLI_STORE_RESULT):bool|\mysqli_result
+	 * @throws EM
+	 * @return true|\mysqli_result */
+	public function Query(string$q,int$mode=MYSQLI_STORE_RESULT):true|\mysqli_result
 	{
-		$R=$this->M->query($q,$mode);
+		try{
+			$R=$this->M->query($q,$mode);
+		}catch(\mysqli_sql_exception$E){
+			throw new EM($E->getMessage(),EM::QUERY,$E,...BugFileLine($this),errno:$E->getCode(),query:$q);
+		}
 
 		if($R===false)
-		{
-			$extra=[
-				'query'=>$q,
-				'errno'=>$q ? $this->M->errno : 0
-			];
-
-			throw new EE_DB($q ? $this->M->error : 'Empty query',EE_DB::QUERY,null,$extra+BugFileLine($this::class));
-		}
+			throw new EM($q ? $this->M->error : 'Empty query',EM::QUERY,...BugFileLine($this),errno:$this->M?->errno,query:$q);
 
 		return $R;
 	}
@@ -142,7 +139,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param bool|string $ignore_odku Флаг IGNORE или содержимое ON DUPLICATE KEY UPDATE
 	 * @param ?array $params Параметры для Prepared statements, при NULL будет вызвана Query
 	 * @return int Insert ID
-	 * @throws EE_DB */
+	 * @throws EM */
 	public function Insert(string$t,array$d,bool|string$ignore_odku=true,?array$params=[]):int
 	{
 		if(is_bool($ignore_odku))
@@ -179,7 +176,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param bool $ignore Флаг IGNORE
 	 * @param bool $query Флаг вызова query, вместо execute
 	 * @return int Affected rows
-	 * @throws EE_DB */
+	 * @throws EM */
 	public function Replace(string$t,array$d,bool$ignore=false,bool$query=false):int
 	{
 		$ext=$ignore ? self::IGNORE : '';
@@ -303,7 +300,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param ?array $params Параметры для Prepared statements, при NULL будет вызвана Query
 	 * @param bool $ignore Флаг IGNORE
 	 * @return int Affected rows
-	 * @throws EE_DB */
+	 * @throws EM */
 	public function Update(string$t,array$d,string|array$w='',?array$params=[],bool$ignore=true):int
 	{
 		if(!$d)
@@ -353,7 +350,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param array $params Параметры для Prepared statements, значение $w в этом случае должно быть строковым
 	 * @param bool $ignore Флаг IGNORE
 	 * @return int Affected rows
-	 * @throws EE_DB */
+	 * @throws EM */
 	public function Delete(string$t,string|array$w='',array$params=[],bool$ignore=true):int
 	{
 		$ext=$ignore ? self::IGNORE : '';
@@ -443,12 +440,12 @@ class MySQL extends Eleanor\BaseClass
 	 * @param string $q Запрос
 	 * @param array $params Параметры запроса
 	 * @param bool $result Флаг возврата результата
-	 * @throws EE_DB
+	 * @throws EM
 	 * @return \MySQLi_result | \MySQLi_stmt (в зависимости от $result) */
 	public function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt
 	{
 		if(!$params)
-			throw new EE_DB('No data supplied for parameters of prepared statement',EE_DB::PREPARED,null,['query'=>$q]+BugFileLine($this::class));
+			throw new EM('No data supplied for parameters of prepared statement',EM::PREPARED,...BugFileLine($this),query:$q,params:$params);
 
 		$stmt=$this->M->prepare($q);
 		$this::BindParams($stmt,$params);
@@ -461,15 +458,7 @@ class MySQL extends Eleanor\BaseClass
 				return$R;
 
 			if($stmt->errno)
-			{
-				$extra=[
-					'query'=>$q,
-					'params'=>$params,
-					'errno'=>$stmt->errno
-				];
-
-				throw new EE_DB($stmt->error,EE_DB::PREPARED,null,$extra+BugFileLine($this::class));
-			}
+				throw new EM($stmt->error,EM::PREPARED,...BugFileLine($this),errno:$stmt->errno,query:$q,params:$params);
 		}
 
 		return$stmt;

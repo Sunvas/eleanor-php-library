@@ -14,11 +14,11 @@ class Stringable extends \Eleanor\BaseClass implements \Stringable
 
 	/** Конструктор
 	 * @param Callable $Callback Генератор строки. Все параметры функции должны иметь параметры по умолчанию
-	 * @throws EE */
+	 * @throws E */
 	public function __construct(callable$Callback)
 	{
 		if(!is_callable($Callback))
-			throw new EE('Callback is not callable',EE::PHP,null,['input'=>$Callback]);
+			throw new E('Callback is not callable',E::PHP,input:$Callback);
 
 		$this->Callback=$Callback;
 	}

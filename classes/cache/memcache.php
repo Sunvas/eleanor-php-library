@@ -5,7 +5,8 @@
 	library@eleanor-cms.ru
 */
 namespace Eleanor\Classes\Cache;
-use Eleanor;
+use Eleanor,
+	Eleanor\Classes\E;
 
 /** Кэш-машина MemCache */
 class MemCache implements Eleanor\Interfaces\Cache
@@ -19,8 +20,8 @@ class MemCache implements Eleanor\Interfaces\Cache
 	/** @var \Memcache Объект MemCache-a */
 	public \Memcache $M;
 
-	/** @param string $u Уникализации кэша (на одной кэш машине может быть запущено несколько копий Eleanor)
-	 * @throws Eleanor\Classes\EE */
+	/** @param string $u Уникализация кэша (на одной кэш машине может быть запущено несколько копий Eleanor)
+	 * @throws E */
 	public function __construct(string$u='')
 	{
 		$this->u=$u;
@@ -35,8 +36,7 @@ class MemCache implements Eleanor\Interfaces\Cache
 		if(!$connected)
 		{
 			$this->M->close();
-			throw new Eleanor\Classes\EE('MemCache failure',Eleanor\Classes\EE::SYSTEM,null,
-				['hint'=>'try to delete the file Library/classes/cache/memcache.php']);
+			throw new E('MemCache failure',E::SYSTEM,hint:'Try to delete the file library/classes/cache/memcache.php');
 		}
 
 		$this->M->setCompressThreshold(20000,0.2);

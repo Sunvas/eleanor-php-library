@@ -20,7 +20,7 @@ class Cache extends \Eleanor\BaseClass
 	 * @param ?string $storage Путь сохранения "вечного" кэша. Вечный отличается тем, что его легко править и он
 	 * не удаляется вместе с основным. Как правило, в вечном кэше хранятся сгенерированные данные ключ=>значение при
 	 * недоступном генераторе.
-	 * @throws EE*/
+	 * @throws E */
 	public function __construct(?string$path=null,?string$storage=null)
 	{
 		$cachedir=__DIR__.'/cache/';
@@ -38,7 +38,7 @@ class Cache extends \Eleanor\BaseClass
 			Files::MkDir($this->storage);
 
 		if(!is_writeable($this->storage))
-			throw new EE('Folder for %cache/storage% is write-protected',EE::SYSTEM);
+			throw new E('Folder for %cache/storage% is write-protected',E::SYSTEM);
 	}
 
 	/** Запись данных в кэш
@@ -48,7 +48,7 @@ class Cache extends \Eleanor\BaseClass
 	 * @param bool $eternal Запись в качестве "вечного" кэша
 	 * @param int $hopeless Время безнадежного устаревания кэша. Используется для предотвращения dog-pile effect. Если меньше $ttl, то преобразуется в значение $ttl*2
 	 * По умолчанию в два раза больше $ttl.
-	 * @throws EE */
+	 * @throws E */
 	public function Put(string$key,mixed$value=false,int$ttl=0,bool$eternal=false,int$hopeless=0):void
 	{
 		if($hopeless<$ttl)
@@ -62,7 +62,7 @@ class Cache extends \Eleanor\BaseClass
 		if($eternal)
 		{
 			if(preg_match('#^[a-z\d.\-_]+$#i',$key)===0)
-				throw new EE('Invalid eternal key',EE::PHP,null,[ 'input'=>$key ]);
+				throw new E('Invalid eternal key',E::PHP,input:$key);
 
 			file_put_contents($this->storage."/{$key}.php",'<?php return '.var_export($value,true).';');
 		}
@@ -71,7 +71,7 @@ class Cache extends \Eleanor\BaseClass
 	/** Получение данных из кэша
 	 * @param string $key Имя ячейки хранения кэша
 	 * @param bool $eternal Флаг добывания значения из "вечного" кэша
-	 * @throws EE
+	 * @throws E
 	 * @return mixed */
 	public function Get(string$key,bool$eternal=false):mixed
 	{
@@ -91,7 +91,7 @@ class Cache extends \Eleanor\BaseClass
 			return$out;
 
 		if(preg_match('#^[a-z\d.\-_]+$#i',$key)>0)
-			throw new EE('Invalid eternal key',EE::PHP,null,[ 'input'=>$key ]);
+			throw new E('Invalid eternal key',E::PHP,input:$key);
 
 		$file=$this->storage."/{$key}.php";
 
@@ -108,7 +108,7 @@ class Cache extends \Eleanor\BaseClass
 	/** Удаление данных из кэша
 	 * @param string $key Имя ячейки хранения кэша
 	 * @param bool $eternal Флаг удаления кэша из таблицы "вечного" хранения
-	 * @throws EE */
+	 * @throws E */
 	public function Delete(string$key,bool$eternal=false):void
 	{
 		$this->Engine->Delete($key);
@@ -116,7 +116,7 @@ class Cache extends \Eleanor\BaseClass
 		if($eternal)
 		{
 			if(preg_match('#[\s\#"\'\\\\/:*?<>|%]+#',$key)>0)
-				throw new EE('Invalid eternal key',EE::PHP,null,[ 'input'=>$key ]);
+				throw new E('Invalid eternal key',E::PHP,input:$key);
 
 			$file=$this->storage."/{$key}.php";
 

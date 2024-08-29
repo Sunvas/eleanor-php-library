@@ -64,7 +64,7 @@ class Telegram extends Eleanor\BaseClass
 	 * @url https://core.telegram.org/bots/api#making-requests
 	 * @param string $method Тип запроса
 	 * @param array|string $data Данные
-	 * @throws EE
+	 * @throws E
 	 * @return string Результат */
 	public function Request(string$method,array|string$data=''):string
 	{
@@ -82,7 +82,7 @@ class Telegram extends Eleanor\BaseClass
 		$erno=curl_errno($this->curl);
 
 		if($erno>0)
-			throw new EE($erno.': '.curl_error($this->curl),EE::SYSTEM);
+			throw new E($erno.': '.curl_error($this->curl),E::SYSTEM);
 
 		return $result;
 	}
@@ -92,7 +92,7 @@ class Telegram extends Eleanor\BaseClass
 	 * @param int|string $chat_id ID Чата
 	 * @param string $text Текст
 	 * @param array $optional Все необязательные атрибуты
-	 * @throws EE
+	 * @throws E
 	 * @return string Результат */
 	public function SendMessage(int|string$chat_id,string$text,array$optional=[]):string
 	{

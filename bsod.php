@@ -82,6 +82,7 @@ HTML;
 		}
 
 		$charset=\Eleanor\CHARSET;
+		$title=strip_tags($error);
 		$base=\Eleanor\SITEDIR;
 		$year=idate('Y');
 		$lang=L10n::$code;
@@ -94,7 +95,7 @@ HTML;
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="none">
 <base href="{$base}">
-<title>{$l10n['error_occurred']} :: {$error}</title>
+<title>{$l10n['error_occurred']} :: {$title}</title>
 <style>
 body{color:black;background-color:whitesmoke;font-family:sans-serif}
 header{font-size:1.6rem;padding:.5rem 0 .4rem}
@@ -105,6 +106,7 @@ a{text-decoration:none}
 </style>
 </head>
 <body>
+<!-- {$code} -->
 <header>{$l10n['error_occurred']}</header>
 <main><code>{$error}</code>{$file}</main>
 {$hint}{$payload}

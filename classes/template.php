@@ -124,7 +124,7 @@ class Template extends \Eleanor\Abstracts\Append
 	/** Источник шаблонов
 	 * @param string $n Название шаблона
 	 * @param array $p Переменные шаблона
-	 * @throws EE
+	 * @throws E
 	 * @return string */
 	protected function _(string$n,array$p=[]):string
 	{
@@ -189,7 +189,7 @@ class Template extends \Eleanor\Abstracts\Append
 				return$result;
 		}
 
-		throw new EE("Template {$n} was not found",EE::PHP,null,BugFileLine($this::class));
+		throw new E("Template {$n} was not found",E::PHP,null,BugFileLine($this));
 	}
 }
 

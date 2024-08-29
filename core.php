@@ -5,7 +5,8 @@
 	library@eleanor-cms.ru
 */
 namespace Eleanor;
-use Eleanor\Classes\Output, Eleanor\Classes\EE;
+use Eleanor\Classes\E,
+	Eleanor\Classes\Output;
 
 /** Кодировка файлов */
 const CHARSET = 'UTF-8';
@@ -25,29 +26,40 @@ defined('Eleanor\BASE_TIME')||define('Eleanor\BASE_TIME',mktime(0,0,0,1,1,2024))
 define('Eleanor\W',stripos(PHP_OS,'win')===0);
 
 /** Получение пути к файлу и номера строки с ошибкой
- * @param ?string $class Фильтр. Значение static::class в точке вызова
+ * @param null|string|object $filter Фильтр: null - предыдущий шаг, object - последнее упоминание, class - первое не упоминание
  * @return array ['file'=>,'line'=>N] */
-function BugFileLine(?string$class=null):array
+function BugFileLine(null|string|object$filter=null):array
 {
-	$db=debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-	$found=false;
+	$db=debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT|DEBUG_BACKTRACE_IGNORE_ARGS);
 
 	#Баг предыдущего шага
-	if($class===null)
+	if($filter===null)
 		return$db[1];
 
-	#Поиск проблемного места (фильтр по классу)
-	foreach(array_slice($db,1) as $item)
+	#Последнее упоминание
+	if(is_object($filter))
 	{
-		if(!isset($item['class']))
-			return$item;
+		$found=[];
 
-		//Если в db встречается BaseClass, значит искомый элемент - следующий (вызов parent::__get)
-		if($item['class']==BaseClass::class)
-			$found=true;
-		elseif($found or $item['class']!=$class)
-			return$item;
+		foreach(array_slice($db,1) as $item)
+			if(isset($item['object']) and $item['object']===$filter)
+				$found=[
+					'file'=>$item['file'],
+					'line'=>$item['line'],
+				];
+			elseif($found)
+				break;
+
+		return$found;
 	}
+
+	#Первое не упоминание
+	foreach(array_slice($db,1) as $item)
+		if(!isset($item['class']) or $item['class']!=$filter)
+			return[
+				'file'=>$item['file'],
+				'line'=>$item['line'],
+			];
 
 	return[];
 }
@@ -55,12 +67,12 @@ function BugFileLine(?string$class=null):array
 /** Функция безопасного подключения файла: в случае ParseError-a, будет создан лог
  * @param string $file Полный путь к файлу, который нужно проинклудить
  * @param array $vars Переменные для файла в его области видимости
- * @throws EE
+ * @throws E
  * @return mixed */
 function AwareInclude(string$file,array$vars=[]):mixed
 {
 	if(!is_file($file))
-		throw new EE('Missing file '.(str_starts_with($file,SITEDIR) ? substr($file,strlen(SITEDIR)) : $file),EE::SYSTEM);
+		throw new E('Missing file '.(str_starts_with($file,SITEDIR) ? substr($file,strlen(SITEDIR)) : $file),E::SYSTEM);
 
 	if($vars)
 		extract($vars,EXTR_PREFIX_INVALID|EXTR_OVERWRITE,'var');
@@ -134,13 +146,13 @@ abstract class BaseClass
 	 * наследнике с методом __callStatic который не может выполнить все вызываемые методы.
 	 * @param string $n Название несуществующего метода
 	 * @param array $p Массив входящих параметров вызываемого метода
-	 * @throws EE
+	 * @throws E
 	 * @return mixed */
 	public static function __callStatic(string$n,array$p):mixed
 	{
-		$E=new EE(
+		$E=new E(
 			'Called undefined method '.static::class.' :: '.$n,
-			EE::PHP,null,BugFileLine(static::class)
+			E::PHP,...BugFileLine(static::class)
 		);
 		$E->Log();
 
@@ -153,17 +165,14 @@ abstract class BaseClass
 	 * наследнике с методом __call который не может выполнить все вызываемые методы.
 	 * @param string $n Название несуществующего метода
 	 * @param array $p Массив входящих параметров вызываемого метода
-	 * @throws EE
+	 * @throws E
 	 * @return mixed */
 	public function __call(string$n,array$p):mixed
 	{
 		if(property_exists($this,$n) and is_object($this->$n) and method_exists($this->$n,'__invoke'))
 			return call_user_func_array([ $this->$n,'__invoke' ],$p);
 
-		$E=new EE(
-			'Called undefined method '.$this::class.' -› '.$n,
-			EE::PHP,null,BugFileLine($this::class)
-		);
+		$E=new E('Called undefined method '.$this::class.' -› '.$n,E::PHP,...BugFileLine($this));
 		$E->Log();
 
 		throw $E;
@@ -174,14 +183,11 @@ abstract class BaseClass
 	 * генерируется Notice, который можно отловить и залогировать. Но удобство метода проявляется в классе наследнике с
 	 * методом __get, который может вернуть не все запрашиваемые свойства.
 	 * @param string $n Имя запрашиваемого свойства
-	 * @throws EE
+	 * @throws E
 	 * @return mixed */
 	public function __get(string$n):mixed
 	{
-		$E=new EE(
-			'Trying to get value from the unknown variable '.$this::class.' -› '.$n,	EE::PHP,null,
-			BugFileLine($this::class)
-		);
+		$E=new E('Reading unknown property '.$this::class.' -› '.$n,E::PHP,...BugFileLine($this));
 		$E->Log();
 
 		throw $E;
@@ -296,7 +302,7 @@ class Library extends BaseClass
 
 	/** Разовое создание объекта по заранее определённому конструктору
 	 * @param string $n Имя класса
-	 * @throws EE */
+	 * @throws E */
 	public function __invoke(string$n):mixed
 	{
 		$creator=[];
@@ -321,10 +327,7 @@ class Library extends BaseClass
 				return new $class($creator);
 		}
 
-		$E=new EE(
-			'Trying to construct object from unknown class '.$n,	EE::PHP,null,
-			BugFileLine(static::class)
-		);
+		$E=new E('Trying to construct object from unknown class '.$n,	E::PHP,...BugFileLine($this));
 		$E->Log();
 
 		throw $E;
@@ -347,7 +350,7 @@ Library::$old_error_handler=set_error_handler(function($c,$error,$f,$l,$context=
 		return;
 	}
 
-	if($c&~E_STRICT and Library::$logs_enabled and class_exists('\Eleanor\Classes\EE'))#
+	if($c&~E_STRICT and Library::$logs_enabled and class_exists('\Eleanor\Classes\E'))#
 	{
 		if($c & E_ERROR)
 			$type='Error ';
@@ -360,11 +363,7 @@ Library::$old_error_handler=set_error_handler(function($c,$error,$f,$l,$context=
 		else
 			$type='';
 
-		$E=new EE(
-			$type.$error,
-			EE::PHP,null,
-			[ 'file'=>$f, 'line'=>$l, 'input'=>$context ]
-		);
+		$E=new E($type.$error,E::PHP,file:$f,line:$l,input:$context);
 
 		$E->Log();
 
@@ -375,34 +374,31 @@ Library::$old_error_handler=set_error_handler(function($c,$error,$f,$l,$context=
 },E_ALL);
 
 Library::$old_exception_handler=set_exception_handler(function(\Throwable$E){
-	/** @var EE $E */
-	$m=$E->getMessage();
 	$f=$E->getFile();
 	$l=$E->getLine();
 	$c=$E->getCode();
 
-	$is_ee=$E instanceof EE;
-
-	if($is_ee)
-		$E->Log();
-	elseif(Library::$log_all_exceptions or call_user_func(Library::$log_filter,$f,$c)
-		#Заплатка на случай отключенного автолоадера
-		and (class_exists('\Eleanor\Classes\EE',false) or include(__DIR__.'/classes/ee.php')))
+	if($E instanceof Abstracts\E)
 	{
-		$c=$E instanceof \ValueError ? EE::DATA : EE::PHP;
-		$E2=new EE($m,EE::PHP,$E);
-		$E2->Log();
+		$E->Log();
+		$m=(string)$E;
+	}
+	else
+	{
+		$m=$E->getMessage();
+
+		if(Library::$log_all_exceptions or call_user_func(Library::$log_filter,$f,$c)
+			#Заплатка на случай отключенного автолоадера
+			and (class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php')))
+		{
+			$c=$E instanceof \ValueError ? E::DATA : E::PHP;
+
+			(new E($m,$c,$E))->Log();
+		}
 	}
 
-	$type=match($c){
-		EE::PHP=>'PHP',
-		EE::DATA=>'Data',
-		EE::USER=>'User',
-		EE::SYSTEM=>'System',
-		default=>'Unknown'
-	};
 
-	BSOD($type.' exception: '.$m,$c,$f,$l,$is_ee ? $E->extra['hint'] ?? null : null,$is_ee ? $E->extra['input'] ?? null : null);
+	BSOD($m,$c,$f,$l,property_exists($E,'hint') ? $E->hint : null,property_exists($E,'input') ? $E->input : null);
 });
 
 #Реализация своей автозагрузки: загружаем только, что напрямую относится к Eleanor PHP Library
@@ -437,12 +433,8 @@ spl_autoload_register(function(string$c){
 			default=>'Class'
 		};
 
-		if(class_exists('\Eleanor\Classes\EE',false) or include(__DIR__.'/classes/ee.php'))
-		{
-			$extra=BugFileLine();
-
-			throw new EE($what.' not found: '.$c,EE::PHP,null,$extra);
-		}
+		if(class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php'))
+			throw new E($what.' not found: '.$c,E::PHP,...BugFileLine());
 	}
 });
 
