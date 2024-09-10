@@ -189,7 +189,7 @@ class Template extends \Eleanor\Abstracts\Append
 				return$result;
 		}
 
-		throw new E("Template {$n} was not found",E::PHP,null,BugFileLine($this));
+		throw new E("Template {$n} was not found",E::PHP,...BugFileLine($this));
 	}
 }
 

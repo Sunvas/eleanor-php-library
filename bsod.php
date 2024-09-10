@@ -97,9 +97,9 @@ HTML;
 <base href="{$base}">
 <title>{$l10n['error_occurred']} :: {$title}</title>
 <style>
-body{color:black;background-color:whitesmoke;font-family:sans-serif}
+body{color:black;background-color:whitesmoke;font-family:sans-serif;margin:0;padding:.5rem;}
 header{font-size:1.6rem;padding:.5rem 0 .4rem}
-main{margin:.5rem 0;padding:.75rem 0;border:darkgray dashed;border-width:2px 0 2px;font-size:1.1rem}
+main{margin:.5rem 0;padding:.75rem 0;border:darkgray dashed;border-width:2px 0 2px;font-size:1.1rem;overflow-y:scroll}
 code+code{display:block; margin-top:.5rem}
 footer{position:fixed;bottom:10px;right:10px;font-size:.8rem;}
 a{text-decoration:none}

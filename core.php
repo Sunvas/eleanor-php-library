@@ -34,7 +34,10 @@ function BugFileLine(null|string|object$filter=null):array
 
 	#Баг предыдущего шага
 	if($filter===null)
-		return$db[1];
+		return[
+			'file'=>$db[1]['file'],
+			'line'=>$db[1]['line'],
+		];
 
 	#Последнее упоминание
 	if(is_object($filter))

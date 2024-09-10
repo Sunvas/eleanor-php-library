@@ -33,14 +33,14 @@ class L10n extends Eleanor\BaseClass implements \ArrayAccess, \Eleanor\Interface
 
 		if(!is_file($file))
 			throw new E('Missing file '.$file,
-				E::PHP,null,BugFileLine()
+				E::PHP,...BugFileLine()
 			);
 
 		$data=Eleanor\AwareInclude($file);
 
 		if(!is_array($data))
 			throw new E('Wrong file format '.$file,
-				E::PHP,null,BugFileLine()
+				E::PHP,...BugFileLine()
 			);
 
 		$this->data=$data;
@@ -87,7 +87,7 @@ class L10n extends Eleanor\BaseClass implements \ArrayAccess, \Eleanor\Interface
 	{
 		return $this->data[$k] ?? throw new E(
 			"Unable to get translation key '{$k}'",
-			E::PHP,null,BugFileLine()
+			E::PHP,...BugFileLine()
 		);
 	}
 }
