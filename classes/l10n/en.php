@@ -37,9 +37,9 @@ class En extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 			DateFormat::Date=>date('Y-m-d',$d),
 			DateFormat::Time=>date('H:i:s',$d),
 			DateFormat::DateTime=>date('Y-m-d H:i:s',$d),
-			DateFormat::MonthYear=>date('F Y',$d),
 			DateFormat::TextDate=>static::TextDate($d,false),
 			DateFormat::TextDateTime=>static::TextDate($d,false).date(' H:i',$d),
+			DateFormat::MonthYear=>date(idate('Y')==idate('Y',$d) ? 'F' : 'F Y',$d),
 			DateFormat::HumanDate=>static::TextDate($d),
 			DateFormat::HumanDateTime=>static::TextDate($d).date(' H:i',$d),
 		};
@@ -66,6 +66,7 @@ class En extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 				return'Tomorrow';
 		}
 
-		return date('d F Y',$t);
+		//Даты текущего года и даты +- полгода отображаем без года
+		return date($now[0]==$day[0] || abs($now[0]-$day[0])==1 && abs($now[1]-$day[1])<7 ? 'd F' : 'd F Y',$t);
 	}
 }

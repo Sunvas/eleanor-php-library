@@ -78,7 +78,7 @@ function AwareInclude(string$file,array$vars=[]):mixed
 		throw new E('Missing file '.(str_starts_with($file,SITEDIR) ? substr($file,strlen(SITEDIR)) : $file),E::SYSTEM);
 
 	if($vars)
-		extract($vars,EXTR_PREFIX_INVALID|EXTR_OVERWRITE,'var');
+		extract($vars,EXTR_PREFIX_INVALID|EXTR_OVERWRITE|EXTR_REFS,'var');
 
 	ob_start();
 
@@ -396,7 +396,7 @@ Library::$old_exception_handler=set_exception_handler(function(\Throwable$E){
 		{
 			$c=$E instanceof \ValueError ? E::DATA : E::PHP;
 
-			(new E($m,$c,$E))->Log();
+			(new E($m,$c,$E,file:$f,line:$l))->Log();
 		}
 	}
 

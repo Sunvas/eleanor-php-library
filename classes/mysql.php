@@ -226,7 +226,7 @@ class MySQL extends Eleanor\BaseClass
 
 			$values=array_values($d);
 			$values=array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
-			$values=array_map(null,...$values);//Из строк в столбцы
+			$values=isset($values[1]) ? array_map(null,...$values) : [...$values];//Из строк в столбцы
 			$values=array_map(fn($item)=>'('.join(',',array_map($this->Escape(...),$item)).')',$values);
 		}
 
@@ -286,7 +286,7 @@ class MySQL extends Eleanor\BaseClass
 
 			$values=array_values($d);
 			$values=array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
-			$values=array_map(null,...$values);//Из строк в столбцы
+			$values=isset($values[1]) ? array_map(null,...$values) : [...$values];//Из строк в столбцы
 			$values=array_map(fn($item)=>'('.join(',',array_map($map,$item)).')',$values);
 		}
 
@@ -447,25 +447,25 @@ class MySQL extends Eleanor\BaseClass
 		if(!$params)
 			throw new EM('No data supplied for parameters of prepared statement',EM::PREPARED,...BugFileLine($this),query:$q,params:$params);
 
-		$stmt=$this->M->prepare($q);
-		$this::BindParams($stmt,$params);
-
-		if($result)
-		{
-			$R=$stmt->get_result();
-
-			if($R)
-				return$R;
-
-			if($stmt->errno)
-				throw new EM($stmt->error,EM::PREPARED,...BugFileLine($this),errno:$stmt->errno,query:$q,params:$params);
+		try{
+			$stmt=$this->M->prepare($q);
+			$ok=$this::BindParams($stmt,$params);
+		}catch(\mysqli_sql_exception$E){
+			throw new EM($E->getMessage(),EM::PREPARED,$E,...BugFileLine($this),errno:$E->getCode(),query:$q,params:$params);
 		}
 
-		return$stmt;
+		if($ok)
+			return $result ? $stmt->get_result() : $stmt;
+
+		throw new EM($stmt->error,EM::PREPARED,...BugFileLine($this),errno:$stmt->errno,query:$q,params:$params);
 	}
 
 	/** При прямой передаче параметров в mysqli::execute_query, каждый элемент из params интерпретируется как строка "Each value is treated as a string."
-	 * Этот же метод позволяет передать в prepared statement числа */
+	 * Этот же метод позволяет передать в prepared statement числа
+	 * @param \MySQLi_stmt $stmt
+	 * @param array $params Данные
+	 * @return bool
+	 * @throws \mysqli_sql_exception */
 	public static function BindParams(\MySQLi_stmt$stmt,array$params):bool
 	{
 		//Если массив целиком состоит из строковых значений

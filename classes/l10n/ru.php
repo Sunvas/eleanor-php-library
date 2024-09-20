@@ -55,9 +55,9 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 			DateFormat::Date=>date('Y-m-d',$d),
 			DateFormat::Time=>date('H:i:s',$d),
 			DateFormat::DateTime=>date('Y-m-d H:i:s',$d),
-			DateFormat::MonthYear=>static::MonthYear($d),
 			DateFormat::TextDate=>static::DateText($d,false),
 			DateFormat::TextDateTime=>static::DateText($d,false).date(' H:i',$d),
+			DateFormat::MonthYear=>static::MonthYear($d),
 			DateFormat::HumanDate=>static::DateText($d),
 			DateFormat::HumanDateTime=>static::DateText($d).date(' H:i',$d),
 		};
@@ -68,6 +68,8 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 	 * @return string */
 	public static function MonthYear(int$t):string
 	{
+		$y=idate('Y',$t);
+
 		return match(idate('m',$t)){
 			1=>'Январь',
 			2=>'Февраль',
@@ -81,7 +83,7 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 			10=>'Октябрь',
 			11=>'Ноябрь',
 			12=>'Декабрь',
-		}.' '.idate('Y',$t);
+		}.(idate('Y')==$y ? '' : ' '.$y);
 	}
 
 	/** Человеческое представление даты
@@ -109,7 +111,8 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 				return'Завтра';
 		}
 
-		return sprintf('%02d %s %d',$day[2],match($day[1]){
+		//Даты текущего года и даты +- полгода отображаем без года
+		return sprintf($day[0]==$now[0] || abs($now[0]-$day[0])==1 && abs($now[1]-$day[1])<7 ? '%02d %s' : '%02d %s %d',$day[2],match($day[1]){
 				1=>'января',
 				2=>'февраля',
 				3=>'марта',
