@@ -449,7 +449,7 @@ class MySQL extends Eleanor\BaseClass
 
 		try{
 			$stmt=$this->M->prepare($q);
-			$ok=$this::BindParams($stmt,$params);
+			$ok=$stmt && $this::BindParams($stmt,$params);
 		}catch(\mysqli_sql_exception$E){
 			throw new EM($E->getMessage(),EM::PREPARED,$E,...BugFileLine($this),errno:$E->getCode(),query:$q,params:$params);
 		}
