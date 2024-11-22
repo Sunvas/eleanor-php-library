@@ -353,7 +353,7 @@ Library::$old_error_handler=set_error_handler(function($c,$error,$f,$l,$context=
 		return;
 	}
 
-	if($c&~E_STRICT and Library::$logs_enabled and class_exists('\Eleanor\Classes\E'))#
+	if($c and Library::$logs_enabled and class_exists('\Eleanor\Classes\E'))#
 	{
 		if($c & E_ERROR)
 			$type='Error ';
