@@ -13,7 +13,7 @@ use Eleanor;
  * обнуляет аккумулятор (свойство s). Пример: (string)$Obj
  * Через вызов объекта возможно получить единичный результат метода, не затрагивая общий аккумулятор.
  * Пример: $part=$Obj('Part1'[,params]); */
-abstract class Append extends Eleanor\BaseClass implements \Stringable
+abstract class Append extends Eleanor\Basic implements \Stringable
 {
 	/** @var string Аккумулятор результата */
 	public string $store='';
@@ -26,7 +26,7 @@ abstract class Append extends Eleanor\BaseClass implements \Stringable
 	protected static array $linking=[];
 
 	/** Терминатор Fluent Interface, выдача результата */
-	public function __toString():string
+	function __toString():string
 	{
 		$s=$this->store;
 		$this->store='';
@@ -37,12 +37,12 @@ abstract class Append extends Eleanor\BaseClass implements \Stringable
 	 * @param string $n Название шаблона
 	 * @params Переменные шаблона
 	 * @return mixed */
-	public function __invoke(string$n,...$params):mixed
+	function __invoke(string$n,...$params):mixed
 	{
 		return$this->_($n,$params);
 	}
 
-	public function __clone()
+	function __clone()
 	{
 		$this->cloned=true;
 	}
@@ -51,7 +51,7 @@ abstract class Append extends Eleanor\BaseClass implements \Stringable
 	 * @param string $n Название шаблона
 	 * @param array $p Параметры шаблона
 	 * @return static */
-	public function __call(string$n,array$p):static
+	function __call(string$n,array$p):static
 	{
 		if(!$this->cloned)
 		{

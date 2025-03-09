@@ -8,14 +8,14 @@ namespace Eleanor\Classes;
 use Eleanor;
 
 /** Поддержка punycode (кириллические домены) */
-class Punycode extends Eleanor\BaseClass
+class Punycode extends Eleanor\Basic
 {
 	/** Кодирование и декодирование домена в/из Punycode. Метод сам определяет, представлен ли домен в нужной форме и,
 	 * если нет - выполняет преобразования.
 	 * @param string $domain Доменное имя
 	 * @param bool $encode Флаг кодирования в Punycode
 	 * @return ?string */
-	public static function Domain(string$domain,bool$encode=true):?string
+	static function Domain(string$domain,bool$encode=true):?string
 	{
 		if($encode)
 		{
@@ -48,7 +48,7 @@ class Punycode extends Eleanor\BaseClass
 	/** Кодирование Punycode в utf-8 строку
 	 * @param string $s Домен в Punycode
 	 * @return string */
-	public static function Decode(string$s):string
+	static function Decode(string$s):string
 	{
 		if(!str_starts_with($s,'xn--'))
 			return$s;
@@ -122,7 +122,7 @@ class Punycode extends Eleanor\BaseClass
 	/** Декодирование utf-8 строки в Punycode
 	 * @param string $s Домен
 	 * @return ?string */
-	public static function Encode(string$s):?string
+	static function Encode(string$s):?string
 	{
 		$values=$unicode=[];
 		$n=strlen($s);

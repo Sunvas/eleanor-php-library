@@ -1,6 +1,6 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
+	Eleanor PHP Library © 2025
 	https://eleanor-cms.ru/library
 	library@eleanor-cms.ru
 */
@@ -11,10 +11,10 @@ use function Eleanor\BugFileLine;
 /** Библиотека для работы с MySQL, с использованием драйвера MySQLi
  * Не учитывается SELECT @@max_allowed_packet
  * @property \MySQLi $M Объект базы данных */
-class MySQL extends Eleanor\BaseClass
+class MySQL extends Eleanor\Basic
 {
 	/** @var \MySQLi */
-	public \MySQLi $M;
+	readonly \MySQLi $M;
 
 	/** Соединение с БД
 	 * @url https://www.php.net/manual/ru/mysqli.construct.php
@@ -27,7 +27,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param ?int $port Номер порта для попытки подключения к серверу MySQL
 	 * @param ?string $socket Сокет или именованный пайп
 	 * @throws EM */
-	public function __construct(null|string|\MySQLi$host=null,?string$user=null,#[\SensitiveParameter]?string$pass=null,?string$db=null,string$charset='utf8mb4',bool$sync=true,?int$port=null,?string$socket=null)
+	function __construct(null|string|\MySQLi$host=null,?string$user=null,#[\SensitiveParameter]?string$pass=null,?string$db=null,string$charset='utf8mb4',bool$sync=true,?int$port=null,?string$socket=null)
 	{
 		if($host instanceof \MySQLi)
 		{
@@ -49,7 +49,7 @@ class MySQL extends Eleanor\BaseClass
 			$this->SyncTimeZone();
 	}
 
-	public function __destruct()
+	function __destruct()
 	{
 		$this->M->close();
 	}
@@ -58,7 +58,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param string $n Имя
 	 * @throws E
 	 * @return mixed */
-	public function __get(string$n):mixed
+	function __get(string$n):mixed
 	{
 		if(property_exists($this->M,$n))
 			return $this->M->$n;
@@ -71,7 +71,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param array $p Параметры вызова
 	 * @throws E
 	 * @return mixed */
-	public function __call(string$n,array$p):mixed
+	function __call(string$n,array$p):mixed
 	{
 		if(method_exists($this->M,$n))
 			return call_user_func_array([$this->M,$n],$p);
@@ -81,7 +81,7 @@ class MySQL extends Eleanor\BaseClass
 
 	/** Синхронизация времени БД со временем PHP (применение часового пояса). Синхронизируются только поля типа
 	 * TIMESTAMP */
-	public function SyncTimeZone():void
+	function SyncTimeZone():void
 	{
 		$t=date_offset_get(date_create());
 		$s=$t>0 ? '+' : '-';
@@ -92,20 +92,20 @@ class MySQL extends Eleanor\BaseClass
 	}
 
 	/** Начало транзакции */
-	public function Transaction():void
+	function Transaction():void
 	{
 		$this->M->autocommit(false);
 	}
 
 	/** Подтверждение транзакции */
-	public function Commit():void
+	function Commit():void
 	{
 		$this->M->commit();
 		$this->M->autocommit(true);
 	}
 
 	/** Откат транзакции */
-	public function RollBack():void
+	function RollBack():void
 	{
 		$this->M->rollback();
 		$this->M->autocommit(true);
@@ -116,7 +116,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param int $mode
 	 * @throws EM
 	 * @return true|\mysqli_result */
-	public function Query(string$q,int$mode=MYSQLI_STORE_RESULT):true|\mysqli_result
+	function Query(string$q,int$mode=MYSQLI_STORE_RESULT):true|\mysqli_result
 	{
 		try{
 			$R=$this->M->query($q,$mode);
@@ -131,7 +131,7 @@ class MySQL extends Eleanor\BaseClass
 	}
 
 
-	public const string IGNORE=' IGNORE';
+	const string IGNORE=' IGNORE';
 
 	/** Обертка для удобного осуществления INSERT запросов
 	 * @param string $t Имя таблицы, куда необходимо вставить данные
@@ -140,7 +140,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param ?array $params Параметры для Prepared statements, при NULL будет вызвана Query
 	 * @return int Insert ID
 	 * @throws EM */
-	public function Insert(string$t,array$d,bool|string$ignore_odku=true,?array$params=[]):int
+	function Insert(string$t,array$d,bool|string$ignore_odku=true,?array$params=[]):int
 	{
 		if(is_bool($ignore_odku))
 		{
@@ -177,7 +177,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param bool $query Флаг вызова query, вместо execute
 	 * @return int Affected rows
 	 * @throws EM */
-	public function Replace(string$t,array$d,bool$ignore=false,bool$query=false):int
+	function Replace(string$t,array$d,bool$ignore=false,bool$query=false):int
 	{
 		$ext=$ignore ? self::IGNORE : '';
 
@@ -199,7 +199,7 @@ class MySQL extends Eleanor\BaseClass
 	 * [ 'field1'=>[ 'values11', 'value12' ], 'field2'=>[ 'value21', 'value22' ] ] или
 	 * [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
 	 * @return string */
-	public function Insert4Query(array$d):string
+	function Insert4Query(array$d):string
 	{
 		#Detecting [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
 		if(array_is_list($d))
@@ -236,7 +236,7 @@ class MySQL extends Eleanor\BaseClass
 	/** Генерация секции INSERT для Prepared Statements
 	 * @param array $d Описание смотреть в методе Insert4Query
 	 * @return array [string INSERT,array $params] */
-	public static function Insert4Prepared(array$d):array
+	static function Insert4Prepared(array$d):array
 	{
 		$params=[];
 
@@ -301,7 +301,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param bool $ignore Флаг IGNORE
 	 * @return int Affected rows
 	 * @throws EM */
-	public function Update(string$t,array$d,string|array$w='',?array$params=[],bool$ignore=true):int
+	function Update(string$t,array$d,string|array$w='',?array$params=[],bool$ignore=true):int
 	{
 		if(!$d)
 			return 0;
@@ -351,7 +351,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param bool $ignore Флаг IGNORE
 	 * @return int Affected rows
 	 * @throws EM */
-	public function Delete(string$t,string|array$w='',array$params=[],bool$ignore=true):int
+	function Delete(string$t,string|array$w='',array$params=[],bool$ignore=true):int
 	{
 		$ext=$ignore ? self::IGNORE : '';
 		$q=$w ? "DELETE{$ext} FROM `{$t}`".$this->Where($w) : "TRUNCATE TABLE `{$t}`";
@@ -367,7 +367,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param array $a Данные для конструкции IN
 	 * @param bool $not Включение конструкции NOT IN. Для оптимизации запросов, по возможности используется = вместо IN
 	 * @return string */
-	public function In(array$a,bool$not=false):string
+	function In(array$a,bool$not=false):string
 	{
 		if(count($a)==1)
 		{
@@ -384,7 +384,7 @@ class MySQL extends Eleanor\BaseClass
 	/** Генерация секции WHERE
 	 * @param string|array $w Условия
 	 * @return string */
-	public function Where(string|array$w):string
+	function Where(string|array$w):string
 	{
 		if(is_array($w))
 		{
@@ -397,10 +397,10 @@ class MySQL extends Eleanor\BaseClass
 		return $w ? ' WHERE '.$w : '';
 	}
 
-	/** Обход экранирование, если значение параметра является целым, дробным и т.п.
+	/** Обход экранирование, если значение параметра является безопасным
 	 * @param mixed $p Значение параметра
 	 * @return mixed NULL если значение нуждается в экранировании */
-	public static function Bypass(mixed$p):mixed
+	static function Bypass(mixed$p):mixed
 	{
 		if($p===null)
 			return'NULL';
@@ -410,6 +410,9 @@ class MySQL extends Eleanor\BaseClass
 
 		if(is_bool($p))
 			return(int)$p;
+
+		if(ctype_alnum($p))
+			return"'{$p}'";
 
 		if($p instanceof \Closure)
 			return$p() ?? 'NULL';
@@ -421,7 +424,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param mixed $p Значение параметра для экранирования
 	 * @param bool $q Флаг включения одинарных кавычек в начало и в конец результата
 	 * @return mixed */
-	public function Escape(mixed$p,bool$q=true):mixed
+	function Escape(mixed$p,bool$q=true):mixed
 	{
 		$bypass=$this::Bypass($p);
 
@@ -442,7 +445,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param bool $result Флаг возврата результата
 	 * @throws EM
 	 * @return \MySQLi_result | \MySQLi_stmt (в зависимости от $result) */
-	public function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt
+	function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt
 	{
 		if(!$params)
 			throw new EM('No data supplied for parameters of prepared statement',EM::PREPARED,...BugFileLine($this),query:$q,params:$params);
@@ -466,7 +469,7 @@ class MySQL extends Eleanor\BaseClass
 	 * @param array $params Данные
 	 * @return bool
 	 * @throws \mysqli_sql_exception */
-	public static function BindParams(\MySQLi_stmt$stmt,array$params):bool
+	static function BindParams(\MySQLi_stmt$stmt,array$params):bool
 	{
 		//Если массив целиком состоит из строковых значений
 		if(array_reduce($params,fn($carry,$item)=>$carry && is_string($item),true))

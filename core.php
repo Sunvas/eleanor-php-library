@@ -20,7 +20,7 @@ defined('Eleanor\SITEDIR')||define('Eleanor\SITEDIR',rtrim(dirname($_SERVER['PHP
 defined('Eleanor\PROTOCOL')||define('Eleanor\PROTOCOL',($_SERVER['HTTPS'] ?? '')=='on' ? 'https://' : 'http://');
 
 /** Начальная временная точка используется для уменьшения используемых timestamp */
-defined('Eleanor\BASE_TIME')||define('Eleanor\BASE_TIME',mktime(0,0,0,1,1,2024));
+defined('Eleanor\BASE_TIME')||define('Eleanor\BASE_TIME',mktime(0,0,0,1,1,2025));
 
 /** Windows detector */
 define('Eleanor\W',stripos(PHP_OS,'win')===0);
@@ -30,7 +30,8 @@ define('Eleanor\W',stripos(PHP_OS,'win')===0);
  * @return array ['file'=>,'line'=>N] */
 function BugFileLine(null|string|object$filter=null):array
 {
-	$db=debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT|DEBUG_BACKTRACE_IGNORE_ARGS);
+	$iso=is_object($filter);
+	$db=debug_backtrace($iso ? DEBUG_BACKTRACE_PROVIDE_OBJECT|DEBUG_BACKTRACE_IGNORE_ARGS : DEBUG_BACKTRACE_IGNORE_ARGS);
 
 	#Баг предыдущего шага
 	if($filter===null)
@@ -39,13 +40,13 @@ function BugFileLine(null|string|object$filter=null):array
 			'line'=>$db[1]['line'],
 		];
 
-	#Последнее упоминание
-	if(is_object($filter))
+	#Последнее упоминание объекта (или его клона)
+	if($iso)
 	{
 		$found=[];
 
 		foreach(array_slice($db,1) as $item)
-			if(isset($item['object']) and $item['object']===$filter)
+			if(isset($item['object']) and $item['object']::class===$filter::class)
 				$found=[
 					'file'=>$item['file'],
 					'line'=>$item['line'],
@@ -141,7 +142,7 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 
 /** Базовый класс, от которого рекомендуется наследовать все остальные: содержит необходимые заглушки, облегчающие поиск
  * багов и их исправление */
-abstract class BaseClass
+abstract class Basic
 {
 	/** Обработка ошибочных вызовов несуществующих статических методов.
 	 * Наличие этого метода может показаться странным: ведь если вызвать несуществующий статический метод, будет
@@ -151,7 +152,7 @@ abstract class BaseClass
 	 * @param array $p Массив входящих параметров вызываемого метода
 	 * @throws E
 	 * @return mixed */
-	public static function __callStatic(string$n,array$p):mixed
+	static function __callStatic(string$n,array$p):mixed
 	{
 		$E=new E(
 			'Called undefined method '.static::class.' :: '.$n,
@@ -170,7 +171,7 @@ abstract class BaseClass
 	 * @param array $p Массив входящих параметров вызываемого метода
 	 * @throws E
 	 * @return mixed */
-	public function __call(string$n,array$p):mixed
+	function __call(string$n,array$p):mixed
 	{
 		if(property_exists($this,$n) and is_object($this->$n) and method_exists($this->$n,'__invoke'))
 			return call_user_func_array([ $this->$n,'__invoke' ],$p);
@@ -188,7 +189,7 @@ abstract class BaseClass
 	 * @param string $n Имя запрашиваемого свойства
 	 * @throws E
 	 * @return mixed */
-	public function __get(string$n):mixed
+	function __get(string$n):mixed
 	{
 		$E=new E('Reading unknown property '.$this::class.' -› '.$n,E::PHP,...BugFileLine($this));
 		$E->Log();
@@ -197,7 +198,7 @@ abstract class BaseClass
 	}
 }
 
-/** Assign On Demand Создание объектов по запросу.
+/** Assign On Demand Создание объектов по запросу. Своя реализация ReflectionClass::newLazyProxy, которую я нахожу слишком громоздкой.
  * Довольно часто бывают ситуации, когда объект нужно создать без явной на то необходимости. Как правило, в CMS объект
  * \MySQLi централизовано создаётся на раннем этапе (из-за особенностей хранения параметров для подключения к БД), а
  * потом подгружаемые компоненты используют его по мере необходимости. Но на простых сайтов, далеко не на каждой странице
@@ -205,12 +206,12 @@ abstract class BaseClass
  * определить конструктор объекта в момент загрузки конфигурации, а в случае необходимости создат объект. Пример использования:
  * class A
  * {
- *    public function Say(){ echo 'Hi'; }
+ *    function Say(){ echo 'Hi'; }
  * }
  *
  * class B
  * {
- *    public static null|Assign|A $o;
+ *    static null|Assign|A $o;
  * }
  *
  * Assign::For(B::$o,fn()=>new A);
@@ -219,11 +220,11 @@ abstract class BaseClass
  * B::$o->Say(); //Hi
  * echo get_class(B::$o); //A
  */
-class Assign extends BaseClass
+class Assign extends Basic
 {
 	/** @param ?object &$link Ссылка, куда будет записан объект при создании
 	 * @param \Closure $Creator Функция, которая должна вернуть объект */
-	public function __construct(protected ?object &$link,protected \Closure$Creator){}
+	function __construct(protected ?object &$link,protected \Closure$Creator){}
 
 	/** Непосредственное создание объекта */
 	protected function Create():void
@@ -232,18 +233,18 @@ class Assign extends BaseClass
 	}
 
 	/** Синтаксический сахар для связывания переменной с объектов, указав её один раз */
-	public static function For(?object &$link,\Closure$Creator):void
+	static function For(?object &$link,\Closure$Creator):void
 	{
 		$link=new static($link,$Creator);
 	}
 
-	public function __get(string$n):mixed
+	function __get(string$n):mixed
 	{
 		$this->Create();
 		return$this->link->$n;
 	}
 
-	public function __call(string$n,array$p):mixed
+	function __call(string$n,array$p):mixed
 	{
 		$this->Create();
 		return call_user_func_array([$this->link,$n],$p);
@@ -252,9 +253,9 @@ class Assign extends BaseClass
 
 /** Основной класс фреймворка Eleanor */
 #[\AllowDynamicProperties]
-class Library extends BaseClass
+class Library extends Basic
 {
-	public static
+	static
 		/** @var ?callable $old_error_handler Предыдущий обработчик ошибок */
 		$old_error_handler,
 
@@ -264,7 +265,7 @@ class Library extends BaseClass
 		/** @var callable $log_filter Фильтр выборочного логирования (если отключено $log_all_errors или $log_all_exceptions) */
 		$log_filter;
 
-	public static bool
+	static bool
 		/** @var bool $log_all_errors Флаг включения логирования всех ошибок */
 		$log_all_errors=true,
 
@@ -274,7 +275,7 @@ class Library extends BaseClass
 		/** @var bool $logs_enabled Флаг включения режима логирования */
 		$logs_enabled=true;
 
-	public static string
+	static string
 		/** @var string $logs Путь к каталогу, в который будут помещаться логи */
 		$logs,
 
@@ -291,14 +292,14 @@ class Library extends BaseClass
 	 * @param string $n Название класса
 	 * @param array $p Массив входящих параметров конструктора или \Closure
 	 * @return mixed */
-	public function __call(string$n,array$p):mixed
+	function __call(string$n,array$p):mixed
 	{
 		$this->creators[$n]=$p;
 		return$this;
 	}
 
 	/** Получение объектов */
-	public function __get(string$n):mixed
+	function __get(string$n):mixed
 	{
 		return$this->$n=$this($n);
 	}
@@ -306,7 +307,7 @@ class Library extends BaseClass
 	/** Разовое создание объекта по заранее определённому конструктору
 	 * @param string $n Имя класса
 	 * @throws E */
-	public function __invoke(string$n):mixed
+	function __invoke(string$n):mixed
 	{
 		$creator=[];
 

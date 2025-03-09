@@ -1,6 +1,6 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
+	Eleanor PHP Library © 2025
 	https://eleanor-cms.ru/library
 	library@eleanor-cms.ru
 */
@@ -8,10 +8,10 @@ namespace Eleanor\Classes;
 use Eleanor;
 
 /** Простенький класс для отправки сообщений в Telegram и проверки аутентификации через него */
-class Telegram extends Eleanor\BaseClass
+class Telegram extends Eleanor\Basic
 {
 	/** @var string Entrypoint адрес для обращения к API telegram */
-	protected string $base_url;
+	protected readonly string $base_url;
 
 	/** @var resource CURL */
 	protected $curl;
@@ -21,7 +21,7 @@ class Telegram extends Eleanor\BaseClass
 	 * @param string $key API key бота
 	 * @param int $expire Число секунд, после которого вход считается недействительным
 	 * @return array|string Строка при ошибке, array - при успехе */
-	public static function CheckAuth(array$data,string$key,int$expire=3600):array|string
+	static function CheckAuth(array$data,string$key,int$expire=3600):array|string
 	{
 		$signature=(string)($data['hash'] ?? '');
 		$checking=[];
@@ -48,14 +48,14 @@ class Telegram extends Eleanor\BaseClass
 
 	/** Создание объекта-экземпляра бота
 	 * @oaram string $api API ключ бота */
-	public function __construct(string$api)
+	function __construct(string$api)
 	{
 		$this->base_url="https://api.telegram.org/bot{$api}/";
 		$this->curl=curl_init($this->base_url);
 	}
 
 	/** Деструктор */
-	public function __destruct()
+	function __destruct()
 	{
 		curl_close($this->curl);
 	}
@@ -66,7 +66,7 @@ class Telegram extends Eleanor\BaseClass
 	 * @param array|string $data Данные
 	 * @throws E
 	 * @return string Результат */
-	public function Request(string$method,array|string$data=''):string
+	function Request(string$method,array|string$data=''):string
 	{
 		curl_setopt_array($this->curl,[
 			CURLOPT_URL=>$this->base_url.$method,
@@ -94,7 +94,7 @@ class Telegram extends Eleanor\BaseClass
 	 * @param array $optional Все необязательные атрибуты
 	 * @throws E
 	 * @return string Результат */
-	public function SendMessage(int|string$chat_id,string$text,array$optional=[]):string
+	function SendMessage(int|string$chat_id,string$text,array$optional=[]):string
 	{
 		$optional['chat_id']=$chat_id;
 		$optional['text']=$text;

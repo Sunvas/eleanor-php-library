@@ -14,7 +14,7 @@ interface L10n
 	 * @param int|string $d Дата в обычном машинном формате, либо timestamp, 0 либо пустая строка - текущая дата
 	 * @param DateFormat $t
 	 * @return string */
-	public static function Date(int|string$d,DateFormat$t):string;
+	static function Date(int|string$d,DateFormat$t):string;
 }
 
 return L10n::class;

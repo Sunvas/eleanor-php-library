@@ -17,7 +17,7 @@ enum Template_Type
 	/** Получение шаблона в зависимости от типа
 	 * @param mixed ...$a описание смотреть в методах ниже
 	 * @return ?string */
-	public function Get(...$a):?string
+	function Get(...$a):?string
 	{
 		return match($this){
 			self::dir => $this->Dir(...$a),
@@ -116,7 +116,7 @@ class Template extends \Eleanor\Abstracts\Append
 	protected static array $linking=['default','queue','loaded'];
 
 	/** @param array|string $queue Очередь на загрузку */
-	public function __construct(array|string$queue=[])
+	function __construct(array|string$queue=[])
 	{
 		$this->queue=(array)$queue;
 	}
@@ -189,7 +189,7 @@ class Template extends \Eleanor\Abstracts\Append
 				return$result;
 		}
 
-		throw new E("Template {$n} was not found",E::PHP,...BugFileLine($this));
+		throw new E("Template '{$n}' was not found",E::PHP,...BugFileLine($this));
 	}
 }
 

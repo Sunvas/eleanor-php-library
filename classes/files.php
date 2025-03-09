@@ -8,12 +8,12 @@ namespace Eleanor\Classes;
 use Eleanor;
 
 /** Библиотека работы с файлами */
-class Files extends Eleanor\BaseClass
+class Files extends Eleanor\Basic
 {
 	/** Преобразования байт в приблизительный читаемый формат
 	 * @param int $b Байты (количество)
 	 * @return string */
-	public static function BytesToSize(int$b):string
+	static function BytesToSize(int$b):string
 	{
 		/*if($b>1152921504606846976)
 			return round($b/1152921504606846976,2).' eb';
@@ -33,7 +33,7 @@ class Files extends Eleanor\BaseClass
 	/** Преобразование приблизительного читаемого формата в байты
 	 * @param string $b Приблизительный читаем формат
 	 * @return int */
-	public static function SizeToBytes(string$b):int
+	static function SizeToBytes(string$b):int
 	{
 		$bytes=(int)$b;
 		if(isset($b[1]))
@@ -65,7 +65,7 @@ class Files extends Eleanor\BaseClass
 	 * @param string $source Источник: путь откуда будет происходить копирование
 	 * @param string $dest Назначение: путь, куда будет происходить копирование
 	 * @return bool */
-	public static function Copy(string$source,string$dest):bool
+	static function Copy(string$source,string$dest):bool
 	{
 		$args=func_num_args();
 		$origdest=$args==3 ? func_get_arg(2) : $dest;
@@ -103,7 +103,7 @@ class Files extends Eleanor\BaseClass
 	 * @param string $dest Назначение: путь, куда будет происходить копирование
 	 * @param bool $purge Флаг обязательно очистки каталога-приемника
 	 * @return bool */
-	public static function SymLink(string$source,string$dest,bool$purge=true):bool
+	static function SymLink(string$source,string$dest,bool$purge=true):bool
 	{
 		#Очистка значений
 		$source=realpath($source);#Путь может быть неполным
@@ -152,7 +152,7 @@ class Files extends Eleanor\BaseClass
 	 * @param string $dest "Рабочий" каталог с файлами, прикрепленный к записи
 	 * @throws E
 	 * @return bool */
-	public static function UpdateDir(string$temp,string$dest):bool
+	static function UpdateDir(string$temp,string$dest):bool
 	{
 		#Очистка значений
 		$temp=realpath($temp);#Путь может быть неполным
@@ -342,7 +342,7 @@ class Files extends Eleanor\BaseClass
 	 * @param string $path Путь к каталогу с линками
 	 * @param array $links Если линки уже созданы - их можно перечислить в этом параметре, не сканируя файлы еще раз
 	 * @return array */
-	public static function GetDelSym(string$path,array$links=[]):array
+	static function GetDelSym(string$path,array$links=[]):array
 	{#Выше важная информация
 		if(!$links)
 		{
@@ -375,7 +375,7 @@ class Files extends Eleanor\BaseClass
 	/** Создание каталога. В отличие от стандартной функции mkdir, метод позволяет создать сразу цепочку каталогов
 	 * @param string $path Путь до каталога, который необходимо создать
 	 * @return bool */
-	public static function MkDir(string$path):bool
+	static function MkDir(string$path):bool
 	{
 		if($path!='' and !is_dir($path))
 		{
@@ -389,7 +389,7 @@ class Files extends Eleanor\BaseClass
 	/** Удаление файлов, каталогов и ссылок на файлы
 	 * @param string $path Путь к файлу, каталогу или ссылке которые нужно удалить
 	 * @return bool */
-	public static function Delete(string$path):bool
+	static function Delete(string$path):bool
 	{
 		$path=rtrim($path,'/\\');
 
@@ -412,7 +412,7 @@ class Files extends Eleanor\BaseClass
 	 * @param string $path Путь к каталогу, размер которого необходимо узнать
 	 * @param callback|null $filter Фильтр для случая, если нужно считать размер определенных файлов. return bool
 	 * @return int Возвращает СУММУ размеров всех внутрилежащих файлов, а не реальное занимаемое место на диске */
-	public static function GetSize(string$path,$filter=null):int
+	static function GetSize(string$path,$filter=null):int
 	{
 		if(is_link($path))
 			return 0;
@@ -436,7 +436,7 @@ class Files extends Eleanor\BaseClass
 	 * @param string $f Имя файла
 	 * @param bool $dec Флаг декодирования (включение обратного преобразования)
 	 * @return string */
-	public static function Windows(string$f,bool$dec=false):string
+	static function Windows(string$f,bool$dec=false):string
 	{
 		if(Eleanor\W)
 			$f=$dec ? mb_convert_encoding($f,Eleanor\CHARSET,'cp1251') : mb_convert_encoding($f,'cp1251');
@@ -453,7 +453,7 @@ class Files extends Eleanor\BaseClass
 	 * @param int $l Длина в байтах (идентично 4му параметру функции substr_replace)
 	 * @param int $buf Число байтов, считываемых за раз
 	 * @return int|null Разница между вставляемой длиной и существующей */
-	public static function FReplace($fh,string$s,int$o,int$l=0,int$buf=4096):?int
+	static function FReplace($fh,string$s,int$o,int$l=0,int$buf=4096):?int
 	{
 		$len=strlen($s);
 
@@ -521,7 +521,7 @@ class Files extends Eleanor\BaseClass
 	 * @param string $a Путь к первому каталогу
 	 * @param string $b Путь ко второму каталогу
 	 * @return string Например: ../../aa/bb/cc */
-	public static function ShortPath(string$a,string$b):string
+	static function ShortPath(string$a,string$b):string
 	{
 		$a=preg_split('#[/\\\\]+#',$a);
 		$b=preg_split('#[/\\\\]+#',$b);

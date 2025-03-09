@@ -22,7 +22,7 @@ class MemCache implements Eleanor\Interfaces\Cache
 
 	/** @param string $u Уникализация кэша (на одной кэш машине может быть запущено несколько копий Eleanor)
 	 * @throws E */
-	public function __construct(string$u='')
+	function __construct(string$u='')
 	{
 		$this->u=$u;
 		$this->M=new \Memcache;
@@ -44,7 +44,7 @@ class MemCache implements Eleanor\Interfaces\Cache
 		$this->names=(array)($this->Get('') ?? []);
 	}
 
-	public function __destruct()
+	function __destruct()
 	{
 		$this->Put('',$this->names);
 		$this->M->close();
@@ -54,7 +54,7 @@ class MemCache implements Eleanor\Interfaces\Cache
 	 * @param string $k Ключ. Рекомендуется задавать в виде тег1_тег2 ...
 	 * @param mixed $v Значение
 	 * @param int $ttl Время жизни этой записи кэша в секундах */
-	public function Put(string$k,mixed$v,int$ttl=0):void
+	function Put(string$k,mixed$v,int$ttl=0):void
 	{
 		$r=$this->M->set($this->u.$k,$v,is_bool($v) || is_int($v) || is_float($v) ? 0 : MEMCACHE_COMPRESSED,$ttl);
 
@@ -65,7 +65,7 @@ class MemCache implements Eleanor\Interfaces\Cache
 	/** Получение записи из кэша
 	 * @param string $k Ключ
 	 * @return mixed */
-	public function Get(string$k):mixed
+	function Get(string$k):mixed
 	{
 		if(!isset($this->names[$k]))
 			return null;
@@ -83,15 +83,15 @@ class MemCache implements Eleanor\Interfaces\Cache
 
 	/** Удаление записи из кэша
 	 * @param string $k Ключ */
-	public function Delete(string$k):void
+	function Delete(string$k):void
 	{
 		unset($this->names[$k]);
 		$this->M->delete($this->u.$k);
 	}
 
-	/** Удаление записей по тегу. Если имя тега пустое - удаляется вешь кэш
+	/** Удаление записей по тегу. Если имя тега пустое - удаляется весь кэш
 	 * @param string $tag Тег */
-	public function DeleteByTag(string$tag):void
+	function DeleteByTag(string$tag):void
 	{
 		if($tag)
 		{

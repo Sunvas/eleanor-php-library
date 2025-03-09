@@ -8,7 +8,7 @@ namespace Eleanor\Classes;
 use Eleanor;
 
 /** Вывод содержимого в браузер, сборник методов для выдачи информации через http */
-class Output extends Eleanor\BaseClass
+class Output extends Eleanor\Basic
 {
 	/** @const Powered by header. Feel free to modify it whatever you want! */
 	protected const string POWERED='X-Powered-CMS: Eleanor PHP Library https://eleanor-cms.ru/library';
@@ -16,7 +16,7 @@ class Output extends Eleanor\BaseClass
 	/** Проверка возможности вернуть браузеру его кэш
 	 * @param string $etag Etag для проверки, поле должно быть пустое если в SendHeaders $cache передавалось число
 	 * @return bool */
-	public static function ReturnCache(string$etag=''):bool
+	static function ReturnCache(string$etag=''):bool
 	{
 		$if_match=$_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
@@ -39,13 +39,13 @@ class Output extends Eleanor\BaseClass
 	}
 
 	/** @var array Storage of nonce */
-	public static array $nonces=[];
+	static array $nonces=[];
 
 	/** Генерация nonce для скриптов. Они могут быть использованы повторно
 	 * @param int $bytes
 	 * @return string
 	 * @throws \Random\RandomException */
-	public static function Nonce(int$bytes=16):string
+	static function Nonce(int$bytes=16):string
 	{
 		if(isset(static::$nonces[$bytes]))
 			return static::$nonces[$bytes];
@@ -59,7 +59,7 @@ class Output extends Eleanor\BaseClass
 	}
 
 	/** @const Mime Types for SendHeaders. Список не исключительный, поэтому не enum */
-	public const string
+	const string
 		CSS='text/css',
 		XML='text/xml',
 		HTML='text/html',
@@ -72,7 +72,7 @@ class Output extends Eleanor\BaseClass
 	 * @param int $code Код ответа
 	 * @param string|int $cache Через int указывается количество секунд на которые нужно закэшировать результат, если string - содержимое etag
 	 * @return bool Флаг успешной отправки заголовков */
-	public static function SendHeaders(string$mimetype=self::TEXT,int$code=200,int|string$cache=604800):bool
+	static function SendHeaders(string$mimetype=self::TEXT,int$code=200,int|string$cache=604800):bool
 	{
 		if(headers_sent())
 			return false;

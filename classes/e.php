@@ -11,10 +11,10 @@ use Eleanor;
 class E extends Eleanor\Abstracts\E
 {
 	/** @var string Подсказка как устранить исключение */
-	readonly public string $hint;
+	readonly string $hint;
 
 	/** @var mixed Входящие данные, которые привели к ошибке */
-	readonly public mixed $input;
+	readonly mixed $input;
 
 	const int
 		/** Ошибка в php коде: ответственный тот, кто писал этот код (разработчик) */
@@ -29,15 +29,14 @@ class E extends Eleanor\Abstracts\E
 		/** Ошибка пользователя (например, некорректно переданные данные): ответственных нет 😆 */
 		USER=4;
 
-	/** Конструктор системных исключений
-	 * @param string $message Описание исключения
+	/** @param string $message Описание исключения
 	 * @param int $code Код исключения
 	 * @param ?\Throwable $previous Предыдущее исключение
 	 * @param ?string $file Путь к файлу, где произошло исключение
 	 * @param ?int $line Номер строки, где произошло исключение
 	 * @param string $hint Подсказка по исправлению ситуации
 	 * @param mixed $input Входящие данные, которые привели к исключению */
-	public function __construct(string$message,int$code=self::USER,?\Throwable$previous=null,?string$file=null,?int$line=null,string$hint='',mixed$input=null)
+	function __construct(string$message,int$code=self::USER,?\Throwable$previous=null,?string$file=null,?int$line=null,string$hint='',mixed$input=null)
 	{
 		if($file!==null)
 			$this->file=$file;
@@ -52,7 +51,7 @@ class E extends Eleanor\Abstracts\E
 	}
 
 	/** Для BSOD */
-	public function __toString():string
+	function __toString():string
 	{
 		$intro=match($this->code){
 			$this::PHP=>'PHP',
@@ -66,7 +65,7 @@ class E extends Eleanor\Abstracts\E
 	}
 
 	/** Логирование исключения */
-	public function Log():void
+	function Log():void
 	{
 		if(!Eleanor\Library::$logs_enabled)
 			return;

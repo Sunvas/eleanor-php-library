@@ -8,16 +8,16 @@ namespace Eleanor\Classes;
 use Eleanor;
 
 /** Библиотека html примитивов */
-class Html extends Eleanor\BaseClass
+class Html extends Eleanor\Basic
 {
 	/** @const ENT Компиляция ENT_* констант */
-	public const int ENT=ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE | ENT_DISALLOWED;
+	const int ENT=ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE | ENT_DISALLOWED;
 
 	/** Преобразование ассоциативного массива в параметры тега
 	 * @param array $a Ассоциативный массив с параметрами название параметра=>значение параметра
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Params(array$a,int$mode=0b110):string
+	static function Params(array$a,int$mode=0b110):string
 	{
 		$params='';
 
@@ -48,7 +48,7 @@ class Html extends Eleanor\BaseClass
 	 *  3й бит отключается применение double encode в htmlspecialchars
 	 * @param string $charset Кодировка
 	 * @return string */
-	public static function ParamValue(\Closure|string$s,int$mode=0b11,string$charset=Eleanor\CHARSET):string
+	static function ParamValue(\Closure|string$s,int$mode=0b11,string$charset=Eleanor\CHARSET):string
 	{
 		if($s instanceof \Closure)
 			return call_user_func($s);
@@ -68,7 +68,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $params Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Tag(string$tag,\Closure|string$content='',array$params=[],int$mode=0b11):string
+	static function Tag(string$tag,\Closure|string$content='',array$params=[],int$mode=0b11):string
 	{
 		$params=static::Params($params,$mode);
 		$content=static::ParamValue($content,$mode);
@@ -83,7 +83,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Radio(?string$name,string|int$value,bool$checked=false,array$extra=[],int$mode=0b11):string
+	static function Radio(?string$name,string|int$value,bool$checked=false,array$extra=[],int$mode=0b11):string
 	{
 		$params=static::Params($extra+[
 			'type'=>'radio',
@@ -101,7 +101,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Text(?string$name,string$content='',array$extra=[],int$mode=0b11):string
+	static function Text(?string$name,string$content='',array$extra=[],int$mode=0b11):string
 	{
 		return static::Tag('textarea',$content,$extra+['name'=>$name],$mode);
 	}
@@ -113,7 +113,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Check(?string$name,bool$checked=false,array$extra=[],int$mode=0b11):string
+	static function Check(?string$name,bool$checked=false,array$extra=[],int$mode=0b11):string
 	{
 		$params=static::Params($extra+[
 			'type'=>'checkbox',
@@ -131,7 +131,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Input(?string$name,string|int|null$value=null,array$extra=[],int$mode=0b11):string
+	static function Input(?string$name,string|int|null$value=null,array$extra=[],int$mode=0b11):string
 	{
 		$params=static::Params($extra+[
 			'value'=>$value,
@@ -148,7 +148,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function InputButton(string$value='OK',string$type='submit',array$extra=[],int$mode=0b11):string
+	static function InputButton(string$value='OK',string$type='submit',array$extra=[],int$mode=0b11):string
 	{
 		return static::Input(false,$value,$extra+['type'=>$type],$mode);
 	}
@@ -159,7 +159,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Button(string$content='OK',string$type='submit',array$extra=[],int$mode=0b11):string
+	static function Button(string$content='OK',string$type='submit',array$extra=[],int$mode=0b11):string
 	{
 		return static::Tag('button',$content,$extra+['type'=>$type],$mode);
 	}
@@ -171,7 +171,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Option(string$view,?string$value=null,bool$selected=false,array$extra=[],int$mode=0b11):string
+	static function Option(string$view,?string$value=null,bool$selected=false,array$extra=[],int$mode=0b11):string
 	{
 		return static::Tag('option',$view,$extra+['value'=>$value,'selected'=>$selected],$mode);
 	}
@@ -182,7 +182,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Optgroup(string$label,string$options,array$extra=[],int$mode=0b110):string
+	static function Optgroup(string$label,string$options,array$extra=[],int$mode=0b110):string
 	{
 		return static::Tag('optgroup',fn()=>$options,$extra+['label'=>$label],$mode);
 	}
@@ -193,7 +193,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Select(?string$name,string$options='',array$extra=[],int$mode=0b110):string
+	static function Select(?string$name,string$options='',array$extra=[],int$mode=0b110):string
 	{
 		if(!$options and !isset($extra['disabled']))
 		{
@@ -210,7 +210,7 @@ class Html extends Eleanor\BaseClass
 	 * @param array $extra Дополнительные параметры
 	 * @param int $mode Смотри описание в ParamValue
 	 * @return string */
-	public static function Items(?string$name,string$options='',array$extra=[],int$mode=0b110):string
+	static function Items(?string$name,string$options='',array$extra=[],int$mode=0b110):string
 	{
 		return static::Select(!$name || str_ends_with($name,'[]') ? $name : $name.'[]',$options,$extra+['size'=>5,'multiple'=>true],$mode);
 	}

@@ -8,15 +8,15 @@ namespace Eleanor\Classes;
 use Eleanor;
 
 /** Генератор относительных URI */
-class Uri extends Eleanor\BaseClass
+class Uri extends Eleanor\Basic
 {
 	/** @static Текущий адрес (по которому обратились к скрипту) */
-	public static string $current;
+	static string $current;
 
 	/** Получение ЧеловекоПонятного URI (обработанную переменную $uri из nginx)
 	 * @url https://ru.wikipedia.org/wiki/Человекопонятный_URL
 	 * @return string */
-	public static function GetURI():string
+	static function GetURI():string
 	{
 		/* Для повышения точности, желательно в конфигурацию nginx поместить примерно следующее:
 		set $clean_url "";
@@ -60,7 +60,7 @@ class Uri extends Eleanor\BaseClass
 	 * @param string $ending Окончание ссылки
 	 * @param array $q Query часть ссылки
 	 * @return string */
-	public static function Make(array$slugs=[],string$ending='',array$q=[]):string
+	static function Make(array$slugs=[],string$ending='',array$q=[]):string
 	{
 		$r=[];
 
@@ -75,7 +75,7 @@ class Uri extends Eleanor\BaseClass
 	 * @param bool $q Добавить ? в начале, если удалось собрать строку запроса
 	 * @param string $d Разделитель параметров, получаемого URL
 	 * @return string */
-	public static function Query(array$a,bool$q=true,string$d='&amp;'):string
+	static function Query(array$a,bool$q=true,string$d='&amp;'):string
 	{
 		$r=[];
 

@@ -8,13 +8,13 @@ namespace Eleanor\Classes\L10n;
 use Eleanor\Enums\DateFormat;
 
 /** Поддержка английского языка */
-class En extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
+class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 {
 	/** Образование множественной формы слова
 	 * @param int $n Число
 	 * @param array $forms Формы слова. Пример ['один','два и больше']
 	 * @return mixed */
-	public static function Plural(int$n,array$forms):mixed
+	static function Plural(int$n,array$forms):mixed
 	{
 		return$n==1 ? $forms[0] : $forms[1];
 	}
@@ -23,7 +23,7 @@ class En extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 	 * @param int|string $d Дата в обычном машинном формате, либо timestamp, 0 либо пустая строка - текущая дата
 	 * @param DateFormat $f
 	 * @return string */
-	public static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
+	static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
 	{
 		if(!$d)
 			$d=time();
@@ -49,7 +49,7 @@ class En extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 	 * @param int $t Дата в формате timestamp
 	 * @param bool $human Флаг включения значений "Today", "Tomorrow", "Yesterday"
 	 * @return string */
-	public static function TextDate(int$t,bool$human=true):string
+	static function TextDate(int$t,bool$human=true):string
 	{
 		$day=explode(',',date('Y,n,j,t',$t));
 		$now=explode(',',date('Y,n,j,t'));

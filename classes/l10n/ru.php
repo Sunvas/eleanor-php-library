@@ -8,13 +8,13 @@ namespace Eleanor\Classes\L10n;
 use Eleanor\Enums\DateFormat;
 
 /** Поддержка русского языка */
-class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
+class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 {
 	/** Образование множественной формы слова
 	 * @param int $n Число
 	 * @param array $forms Формы слова. Пример ['один','два, три, четыре', 'пять, шесть, семь, восемь, девять, ноль')
 	 * @return mixed */
-	public static function Plural(int$n,array$forms):mixed
+	static function Plural(int$n,array$forms):mixed
 	{
 		$forms+=['','',''];
 		return $n%10==1&&$n%100!=11?$forms[0]:($n%10>=2&&$n%10<=4&&($n%100<10||$n%100>=20)?$forms[1]:$forms[2]);
@@ -23,7 +23,7 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 	/** Транслитерация строки в латинницу
 	 * @param string $s Текст
 	 * @return string */
-	public static function Translit(string$s):string
+	static function Translit(string$s):string
 	{
 		return str_replace(
 			['а','б','в','г','д','е','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ы','ё','ж','ч',
@@ -41,7 +41,7 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 	 * @param int|string $d Дата в обычном машинном формате, либо timestamp, 0 либо пустая строка - текущая дата
 	 * @param DateFormat $f
 	 * @return string */
-	public static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
+	static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
 	{
 		if(!$d)
 			$d=time();
@@ -66,7 +66,7 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 	/** Вывод месяца и года
 	 * @param int $t Timestamp
 	 * @return string */
-	public static function MonthYear(int$t):string
+	static function MonthYear(int$t):string
 	{
 		$y=idate('Y',$t);
 
@@ -90,7 +90,7 @@ class Ru extends \Eleanor\BaseClass implements \Eleanor\Interfaces\L10n
 	 * @param int $t Дата в формате timestamp
 	 * @param bool $human Флаг включения значений "Сегодня", "Завтра", "Вчера"
 	 * @return string */
-	public static function DateText(int$t,bool$human=true):string
+	static function DateText(int$t,bool$human=true):string
 	{
 		$day=array_map('intval',explode(',',date('Y,n,j,t',$t)));
 		$now=array_map('intval',explode(',',date('Y,n,j,t')));

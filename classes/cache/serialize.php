@@ -18,7 +18,7 @@ class Serialize implements Eleanor\Interfaces\Cache
 
 	/** @param ?string $path Путь к файлам кэша
 	 * @throws E */
-	public function __construct(?string$path=null)
+	function __construct(?string$path=null)
 	{
 		$this->path=$path ?? $_SERVER['DOCUMENT_ROOT'].Eleanor\SITEDIR.'cache/';
 
@@ -33,7 +33,7 @@ class Serialize implements Eleanor\Interfaces\Cache
 	 * @param string $k Ключ. Рекомендуется задавать в виде тег1_тег2 ...
 	 * @param mixed $v Значение
 	 * @param int $ttl Время жизни этой записи кэша в секундах */
-	public function Put(string$k,mixed$v,int$ttl=0):void
+	function Put(string$k,mixed$v,int$ttl=0):void
 	{
 		$f=$this->path.$k.'.s';
 
@@ -43,7 +43,7 @@ class Serialize implements Eleanor\Interfaces\Cache
 
 	/** Получение записи из кэша
 	 * @param string $k Ключ  */
-	public function Get(string$k):mixed
+	function Get(string$k):mixed
 	{
 		$f=$this->path.$k.'.s';
 
@@ -63,15 +63,15 @@ class Serialize implements Eleanor\Interfaces\Cache
 
 	/** Удаление записи из кэша
 	 * @param string $k Ключ */
-	public function Delete(string$k):void
+	function Delete(string$k):void
 	{
 		Files::Delete($this->path.$k.'.s');
 		clearstatcache();
 	}
 
-	/** Удаление записей по тегу. Если имя тега пустое - удаляется вешь кэш
+	/** Удаление записей по тегу. Если имя тега пустое - удаляется весь кэш
 	 * @param string $tag Тег */
-	public function DeleteByTag(string$tag):void
+	function DeleteByTag(string$tag):void
 	{
 		$tag=str_replace('..','',$tag);
 

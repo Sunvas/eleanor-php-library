@@ -11,13 +11,13 @@ use Eleanor;
 class EM extends Eleanor\Abstracts\E
 {
 	/** @var ?int Номер ошибки по версии MySQL */
-	readonly public ?int $errno;
+	readonly ?int $errno;
 
 	/** @var ?string Проблемный запрос (для QUERY и PREPARED) */
-	readonly public ?string $query;
+	readonly ?string $query;
 
 	/** @var ?array Параметры (для CONNECT и PREPARED) */
-	readonly public ?array $params;
+	readonly ?array $params;
 
 	const int
 		/** Ошибка при подключении */
@@ -37,7 +37,7 @@ class EM extends Eleanor\Abstracts\E
 	 * @param ?int $errno Номер ошибки по версии MySQL
 	 * @param ?string $query Проблемный запрос (для QUERY и PREPARED)
 	 * @param ?array $params Параметры (для CONNECT и PREPARED) */
-	public function __construct(string$message,int$code=0,?\Throwable$previous=null,?string$file=null,?int$line=null,?int$errno=null,?string$query=null,?array$params=null)
+	function __construct(string$message,int$code=0,?\Throwable$previous=null,?string$file=null,?int$line=null,?int$errno=null,?string$query=null,?array$params=null)
 	{
 		$this->errno=$errno;
 		$this->query=$query;
@@ -53,7 +53,7 @@ class EM extends Eleanor\Abstracts\E
 	}
 
 	/** Для BSOD */
-	public function __toString():string
+	function __toString():string
 	{
 		$l10n=new L10n('em');
 
@@ -66,7 +66,7 @@ class EM extends Eleanor\Abstracts\E
 	}
 
 	/** Логирование исключения */
-	public function Log():void
+	function Log():void
 	{
 		$type=match($this->code){
 			self::CONNECT=>'db_connect',

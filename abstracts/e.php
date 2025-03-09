@@ -15,13 +15,13 @@ abstract class E extends \Exception
 	const int SIZE_TO_COMPRESS=2097152;#2 Mb
 
 	/** Запись в системных логах и в BSOD */
-	public function __toString():string
+	function __toString():string
 	{
 		return$this->message;
 	}
 
 	/** Логирование исключения */
-	abstract public function Log();
+	abstract function Log();
 
 	/** Формирование записи в .log файле
 	 * @param array $data Накопленные данные этого исключения
@@ -151,7 +151,7 @@ abstract class E extends \Exception
 	 * @param string $source Путь к сжимаемому файлу
 	 * @param string $dest Путь с сжатому файлу (результату)
 	 * @return bool */
-	public static function CompressFile(string$source,string$dest):bool
+	static function CompressFile(string$source,string$dest):bool
 	{
 		if(!is_file($source) or file_exists($dest) or !is_writable(dirname($dest)))
 			return false;
