@@ -1,6 +1,6 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
+	Eleanor PHP Library © 2025
 	https://eleanor-cms.ru/library
 	library@eleanor-cms.ru
 */
@@ -84,7 +84,7 @@ class EM extends Eleanor\Abstracts\E
 	/** Формирование записи в .log файле
 	 * @param array $data Накопленные данные этого исключения
 	 * @return string Запись для .log файла */
-	protected function LogItem(&$data):string
+	protected function LogItem(array&$data):string
 	{
 		#Запись в переменные нужна для последующего удобного чтения лог-файла любыми читалками
 		$data['n']??=0;#Counter

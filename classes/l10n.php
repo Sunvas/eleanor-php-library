@@ -56,6 +56,15 @@ class L10n extends Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L1
 		return call_user_func([$class,'Date'],$d,$t);
 	}
 
+	/** Получение отдельного языкового значения
+	 * @param array $pool Пул значений
+	 * @param mixed $d Знаение по умолчанию
+	 * @return mixed */
+	static function Item(array$pool,mixed$d=null):mixed
+	{
+		return $pool[static::$code] ?? $pool[''] ?? $d;
+	}
+
 	/** Установка языковой переменной
 	 * @param string|int $k Имя переменной
 	 * @param mixed $v Языковое значение */

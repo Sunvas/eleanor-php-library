@@ -411,9 +411,6 @@ class MySQL extends Eleanor\Basic
 		if(is_bool($p))
 			return(int)$p;
 
-		if(ctype_alnum($p))
-			return"'{$p}'";
-
 		if($p instanceof \Closure)
 			return$p() ?? 'NULL';
 
@@ -434,7 +431,8 @@ class MySQL extends Eleanor\Basic
 		if(is_array($p))
 			return$this->In($p);
 
-		$p=$this->M->real_escape_string((string)$p);
+		if(!is_string($p) or !ctype_alnum($p))
+			$p=$this->M->real_escape_string((string)$p);
 
 		return$q ? "'{$p}'" : $p;
 	}

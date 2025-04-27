@@ -60,12 +60,10 @@ class Output extends Eleanor\Basic
 
 	/** @const Mime Types for SendHeaders. Список не исключительный, поэтому не enum */
 	const string
-		CSS='text/css',
 		XML='text/xml',
 		HTML='text/html',
 		TEXT='text/plain',
-		JSON='application/json',
-		JAVASCRIPT='application/javascript';
+		JSON='application/json';
 
 	/** Подготовка хедеров (действия перед echo)
 	 * @param string $mimetype Тип контента (text,html,js,css,json,xml)
@@ -108,7 +106,9 @@ class Output extends Eleanor\Basic
 		elseif($mimetype===static::HTML)
 			header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic'");
 
-		header(static::POWERED);
+		if(static::POWERED)
+			header(static::POWERED);
+
 		header("Content-Type: {$mimetype}; charset=utf-8",true,$code);
 
 		return true;

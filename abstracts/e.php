@@ -6,10 +6,11 @@
 */
 
 namespace Eleanor\Abstracts;
-use Eleanor\Classes\Files;
+use Eleanor\Classes\Files,
+	Eleanor\Interfaces\Loggable;
 
 /** Основа системных исключений: базовые методы для их логирования */
-abstract class E extends \Exception
+abstract class E extends \Exception implements Loggable
 {
 	/** Размер лог файла, после которого он будет сжат */
 	const int SIZE_TO_COMPRESS=2097152;#2 Mb
@@ -48,7 +49,7 @@ abstract class E extends \Exception
 		$is_json=is_file($path2json);
 
 		if($is_log and !is_writeable($path2log) or !$is_log and !is_writeable(dirname($path2log)))
-			return trigger_error("File {$path2log} is write-protected!",E_USER_ERROR);
+			return trigger_error("File {$path2log} is write-protected!",E_USER_WARNING);
 
 		//Архивация .log файла и удаление json файла (если размер превысил порог, значит его никто не читает)
 		if($is_log and filesize($path2log)>static::SIZE_TO_COMPRESS)

@@ -1,12 +1,13 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
+	Eleanor PHP Library © 2025
 	https://eleanor-cms.ru/library
 	library@eleanor-cms.ru
 */
 namespace Eleanor;
 use Eleanor\Classes\E,
-	Eleanor\Classes\Output;
+	Eleanor\Classes\Output,
+	Eleanor\Traits\FL4E;
 
 /** Кодировка файлов */
 const CHARSET = 'UTF-8';
@@ -150,17 +151,13 @@ abstract class Basic
 	 * наследнике с методом __callStatic который не может выполнить все вызываемые методы.
 	 * @param string $n Название несуществующего метода
 	 * @param array $p Массив входящих параметров вызываемого метода
-	 * @throws E
-	 * @return mixed */
-	static function __callStatic(string$n,array$p):mixed
+	 * @throws \BadMethodCallException */
+	static function __callStatic(string$n,array$p)
 	{
-		$E=new E(
+		throw new class(
 			'Called undefined method '.static::class.' :: '.$n,
-			E::PHP,...BugFileLine(static::class)
-		);
-		$E->Log();
-
-		throw $E;
+			1,...BugFileLine(static::class)
+		) extends \BadMethodCallException{ use FL4E; };
 	}
 
 	/** Обработка ошибочных вызовов несуществующих методов.
@@ -169,17 +166,17 @@ abstract class Basic
 	 * наследнике с методом __call который не может выполнить все вызываемые методы.
 	 * @param string $n Название несуществующего метода
 	 * @param array $p Массив входящих параметров вызываемого метода
-	 * @throws E
+	 * @throws \BadMethodCallException
 	 * @return mixed */
 	function __call(string$n,array$p):mixed
 	{
 		if(property_exists($this,$n) and is_object($this->$n) and method_exists($this->$n,'__invoke'))
 			return call_user_func_array([ $this->$n,'__invoke' ],$p);
 
-		$E=new E('Called undefined method '.$this::class.' -› '.$n,E::PHP,...BugFileLine($this));
-		$E->Log();
-
-		throw $E;
+		throw new class(
+			'Called undefined method '.$this::class.' -› '.$n,
+			0,...BugFileLine($this)
+		) extends \BadMethodCallException{ use FL4E; };
 	}
 
 	/** Обработка получения несуществующих свойств
@@ -191,10 +188,7 @@ abstract class Basic
 	 * @return mixed */
 	function __get(string$n):mixed
 	{
-		$E=new E('Reading unknown property '.$this::class.' -› '.$n,E::PHP,...BugFileLine($this));
-		$E->Log();
-
-		throw $E;
+		throw new E('Reading unknown property '.$this::class.' -› '.$n,E::PHP,...BugFileLine($this));
 	}
 }
 
@@ -331,10 +325,7 @@ class Library extends Basic
 				return new $class($creator);
 		}
 
-		$E=new E('Trying to construct object from unknown class '.$n,	E::PHP,...BugFileLine($this));
-		$E->Log();
-
-		throw $E;
+		throw new E('Trying to construct object from unknown class '.$n,E::PHP,...BugFileLine($this));
 	}
 }
 
@@ -367,9 +358,7 @@ Library::$old_error_handler=set_error_handler(function($c,$error,$f,$l,$context=
 		else
 			$type='';
 
-		$E=new E($type.$error,E::PHP,file:$f,line:$l,input:$context);
-
-		$E->Log();
+		new E($type.$error,E::PHP,file:$f,line:$l,input:$context)->Log();
 
 		//Отображаем ошибки только если они связаны с парсингом php кода или пользовательскими trigger_error
 		if($c & (E_USER_ERROR | E_PARSE))
@@ -381,26 +370,23 @@ Library::$old_exception_handler=set_exception_handler(function(\Throwable$E){
 	$f=$E->getFile();
 	$l=$E->getLine();
 	$c=$E->getCode();
+	$m=$E->getMessage();
 
-	if($E instanceof Abstracts\E)
-	{
+	if($E instanceof Interfaces\Loggable)
 		$E->Log();
-		$m=(string)$E;
-	}
-	else
+	elseif(Library::$log_all_exceptions or call_user_func(Library::$log_filter,$f,$c)
+		#Patch for the case when autoloader is off
+		and (class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php')))
 	{
-		$m=$E->getMessage();
+		$c=match(true){
+			$E instanceof \LogicException || $E instanceof \Error=>E::PHP,
+			$E instanceof \RuntimeException=>E::SYSTEM,
+			$E instanceof \ValueError=>E::DATA,
+			default=>E::USER
+		};
 
-		if(Library::$log_all_exceptions or call_user_func(Library::$log_filter,$f,$c)
-			#Заплатка на случай отключенного автолоадера
-			and (class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php')))
-		{
-			$c=$E instanceof \ValueError ? E::DATA : E::PHP;
-
-			(new E($m,$c,$E,file:$f,line:$l))->Log();
-		}
+		new E($m,$c,$E,file:$f,line:$l)->Log();
 	}
-
 
 	BSOD($m,$c,$f,$l,property_exists($E,'hint') ? $E->hint : null,property_exists($E,'input') ? $E->input : null);
 });
@@ -429,9 +415,8 @@ spl_autoload_register(function(string$c){
 	if(!$exists or !class_exists($c,false) and !interface_exists($c,false) and !trait_exists($c,false) and !enum_exists($c,false))
 	{
 		$what=match(strstr($lcc, '\\', true)){
-			'traits'=>'Trait',
 			'enums'=>'Enum',
-			'l10n'=>'L10n',
+			'traits'=>'Trait',
 			'interfaces'=>'Interface',
 			'abstracts'=>'Abstract class',
 			default=>'Class'

@@ -1,6 +1,6 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
+	Eleanor PHP Library © 2025
 	https://eleanor-cms.ru/library
 	library@eleanor-cms.ru
 */
@@ -29,25 +29,23 @@ enum Template_Type
 	/** Шаблонизатор на каталогах
 	 * @param string $n Имя шаблона
 	 * @param array $p Переменные шаблона
-	 * @param array $d переменные по-умолчанию (из шаблонизатора)
 	 * @param array $files Перечень файлов из каталога
 	 * @return ?string */
-	private function Dir(string$n,array$p,array$d,array$files):?string
+	private function Dir(string$n,array$p,array$files):?string
 	{
 		if(!isset($files[$n]))
 			return null;
-
-		//Если передан только один параметр в виде массива, в выгружаем в качестве параметров именно его
-		if(isset($p[0]) and count($p)==1 and is_array($p[0]))
-			$p=$p[0];
 
 		try
 		{
 			ob_start();
 
-			$content=\Eleanor\AwareInclude($files[$n],$p+$d);
+			$content=\Eleanor\AwareInclude($files[$n],$p);
 
-			if($content==1)
+			if($content===null)
+				return null;
+
+			if($content===1)
 				$content='';
 
 			return$content.ob_get_contents();
@@ -58,36 +56,33 @@ enum Template_Type
 		}
 	}
 
-	/** Шаблонизатор на массиве. Переменные поддерживаются только если значения массива - \Closure
+	/** Шаблонизатор на массиве. Переменные поддерживаются только если значения это \Closure. Требования к \Closure
+	 * аналогичны требованиям к методам объекта - смотри ниже.
 	 * @param string $n Имя шаблона
 	 * @param array $p Переменные шаблона
-	 * @param array $d переменные по-умолчанию (из шаблонизатора), передаются последним параметром в \Closure
 	 * @param array $a Массив с шаблонами
 	 * @return ?string */
-	private function Array(string$n,array$p,array$d,array$a):?string
+	private function Array(string$n,array$p,array$a):?string
 	{
-		$p[]=$d;
-
 		if(isset($a[$n]))
-			return(string)($a[$n] instanceof \Closure ? call_user_func_array($a[$n],$p) : $a[$n]);
+			return($a[$n] instanceof \Closure ? call_user_func_array($a[$n],$p) : $a[$n]);
 
 		return null;
 	}
 
-	/** Шаблонизатор на объекте
+	/** Шаблонизатор на объекте. Переменные передаются в методы в виде именованных аргументов, значения по умолчанию
+	 *  рекомендуется получать через spread-операторор ..., каждый метод должен возвращать ?string.
 	 * @param string $n Имя шаблона
 	 * @param array $p Переменные шаблона
-	 * @param array $d переменные по-умолчанию (из шаблонизатора), передаются последним параметром в методы
 	 * @param object $O Объект с методами
 	 * @return ?string */
-	private function Object(string$n,array$p,array$d,object$O):?string
+	private function Object(string$n,array$p,object$O):?string
 	{
 		$o=[$O,$n];
-		$p[]=$d;
 
 		//Поддержка прямых методов и __call
 		if(method_exists($O,$n) or is_callable($o))
-			return(string)call_user_func_array($o,$p);
+			return call_user_func_array($o,$p);
 
 		return null;
 	}
@@ -96,29 +91,32 @@ enum Template_Type
 /** Шаблонизатор */
 class Template extends \Eleanor\Abstracts\Append
 {
-	/** Тип обрабатываемых файлов */
+	/** Extension of processed files */
 	const string EXT='.php';
 
-	/** @var array Переменные, которые будут переданы во все шаблоны по умолчанию (assign) */
 	public array
+		/** @var array $default Default variables being passed to all templates.*/
 		$default=[],
 
-		/** @var array Очередь на загрузку. Принимаются:
-		 * пути в каталоги с файлами;
-		 * пути к файлам возвращающих массив;
-		 * пути к файлам возвращающим объект; */
+		/** @var array $queue Queue to load (array works better than SplDoublyLinkedList). Accepted:
+		 * paths to folders with files;
+		 * paths to files returning array;
+		 * paths to files returning object;
+		 * objects;
+		 * arrays; */
 		$queue=[];
 
-	/** @var array Массив загруженных шаблонов */
+	/** @var array $loaded Loaded templates [type, contents] */
 	protected array $loaded=[];
 
 	/** @var array Названия свойств, которые при клонировании объектов должны стать ссылками на оригинальны свойства */
 	protected static array $linking=['default','queue','loaded'];
 
-	/** @param array|string $queue Очередь на загрузку */
+	/** @param array|string $queue Queue to load */
 	function __construct(array|string$queue=[])
 	{
 		$this->queue=(array)$queue;
+		parent::__construct();
 	}
 
 	/** Источник шаблонов
@@ -128,31 +126,21 @@ class Template extends \Eleanor\Abstracts\Append
 	 * @return string */
 	protected function _(string$n,array$p=[]):string
 	{
-		#Поиск шаблона среди уже загруженных
-		foreach($this->loaded as [$Type,$files])
-			if(null!==$result=$Type->Get($n,$p,$this->default,$files))
-				return$result;
-
-		#Среди загруженных ничего не нашли, жаль, значит будем "шерстить" очередь.
-		foreach($this->queue as $k=>$item)
+		while($this->queue)
 		{
-			unset($this->queue[$k]);
-			$result=null;
+			$item=array_pop($this->queue);
 
+			#Шаблонизатор в виде массива
 			if(is_array($item))
-			{#Шаблонизатор в виде массива: в файле return []
-				$this->loaded[$k]=[Template_Type::array,$item];
-				$result=Template_Type::array->Get($n,$p,$this->default,$item);
-			}
+				$this->loaded[]=[Template_Type::array,$item];
 
+			#Шаблонизатор в виде объекта
 			elseif(is_object($item))
-			{#Шаблонизатор в виде объекта: в файле return new class {}
-				$this->loaded[$k]=[Template_Type::object,$item];
-				$result=Template_Type::object->Get($n,$p,$this->default,$item);
-			}
+				$this->loaded[]=[Template_Type::object,$item];
 
+			#Шаблонизатор в виде каталога: в каталоге файлы
 			elseif(is_dir($item))
-			{#Шаблонизатор в виде каталога: в каталоге файлы
+			{
 				$found=glob(rtrim($item,'/\\').DIRECTORY_SEPARATOR.'*'.static::EXT);
 				$files=[];
 
@@ -161,31 +149,35 @@ class Template extends \Eleanor\Abstracts\Append
 						$files[ basename($file,static::EXT) ]=$file;
 
 				if($files)
-				{
-					$this->loaded[$k]=[Template_Type::dir,$files];
-					$result=Template_Type::dir->Get($n,$p,$this->default,$files);
-				}
+					$this->loaded[]=[Template_Type::dir,$files];
 			}
 
+			#Шаблонизатор на файле: либо объект, либо массив
 			elseif(is_file($item))
-			{#Шаблонизатор на файле: либо объект, либо массив
+			{
 				ob_start();
-				$content=\Eleanor\AwareInclude($item,$this->default);
+				$content=\Eleanor\AwareInclude($item);
 				ob_end_clean();
 
 				if(is_array($content))
-				{
-					$this->loaded[$k]=[Template_Type::array,$content];
-					$result=Template_Type::array->Get($n,$p,$this->default,$content);
-				}
+					$this->loaded[]=[Template_Type::array,$content];
 				elseif(is_object($content))
-				{
-					$this->loaded[$k]=[Template_Type::object,$content];
-					$result=Template_Type::object->Get($n,$p,$this->default,$content);
-				}
+					$this->loaded[]=[Template_Type::object,$content];
 			}
+		}
 
-			if($result!==null)
+		#Если передан единственный параметр в виде массива, в выгружаем в качестве параметров именно его
+		if(isset($p[0]) and count($p)==1 and is_array($p[0]))
+			$p=$p[0];
+
+		$p+=$this->default;
+
+		#Поиск шаблона
+		foreach($this->loaded as [$Type,$item])
+		{
+			$result=$Type->Get($n,$p,$item);
+
+			if(null!==$result)
 				return$result;
 		}
 

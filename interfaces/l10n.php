@@ -4,7 +4,7 @@
 	https://eleanor-cms.ru/library
 	library@eleanor-cms.ru
 */
-namespace Eleanor\interfaces;
+namespace Eleanor\Interfaces;
 use Eleanor\Enums\DateFormat;
 
 /** Обязательные методы системных языков */

@@ -18,7 +18,7 @@ class Uri extends Eleanor\Basic
 	 * @return string */
 	static function GetURI():string
 	{
-		/* Для повышения точности, желательно в конфигурацию nginx поместить примерно следующее:
+		/* Для повышения точности, в конфигурацию nginx рекомендуется поместить примерно следующее:
 		set $clean_url "";
 
 		if (!-e $request_filename) {
