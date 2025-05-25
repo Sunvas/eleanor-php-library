@@ -1,12 +1,11 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	Eleanor PHP Library © 2025
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Enums;
 
-/** Форматы дат, поддерживаемых системой */
 enum DateFormat:string {
 	case Time='t';
 	case Date='d';

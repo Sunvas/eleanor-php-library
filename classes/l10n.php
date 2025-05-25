@@ -1,44 +1,45 @@
 <?php
 /**
 	Eleanor PHP Library © 2025
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
-use Eleanor, Eleanor\Enums\DateFormat;
+use Eleanor,
+	Eleanor\Enums\DateFormat;
 use function Eleanor\BugFileLine;
 
-/** Реализация языковой поддержки */
+/** Localization */
 class L10n extends Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L10n
 {
-	/** @var string Системный язык */
+	/** @var string Common language code */
 	static string $code='ru';
 
-	/** @var array Массив с языковыми значениями из файла */
+	/** @var array L10n values from file */
 	protected readonly array $data;
 
-	/** Формат имени языкового файла [name]-[code].php или [code].php (если имя пустое) Структура языкового файла:
+	/** Filename of l10n file must be [name]-[code].php or [code].php (in case when name is empty). Contents:
 	 * <?php
 	 * return [
 	 *  'param1'=>'string value',
 	 *  'param2'=>fn($v)=>"complex {$v} value",
 	 *   ...
 	 * ];
-	 * @param string $name Имя языкового файла
-	 * @param string $source Каталог-источник языковых файлов, обязательно с / в конце
+	 * @param string $name Name of l10n file
+	 * @param string $source Source folder for l10n files, must end with /
 	 * @throws E */
 	function __construct(string$name,string$source=__DIR__.'/../l10n/')
 	{
 		$file=$source.($name ? $name.'-' : '').static::$code.'.php';
 
-		if(!is_file($file))
+		if(!\is_file($file))
 			throw new E('Missing file '.$file,
 				E::PHP,...BugFileLine()
 			);
 
 		$data=Eleanor\AwareInclude($file);
 
-		if(!is_array($data))
+		if(!\is_array($data))
 			throw new E('Wrong file format '.$file,
 				E::PHP,...BugFileLine()
 			);
@@ -46,50 +47,50 @@ class L10n extends Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L1
 		$this->data=$data;
 	}
 
-	/** Представление даты для человека
-	 * @param int|string $d Дата в обычном машинном формате, либо timestamp, 0 либо пустая строка - текущая дата
+	/** Human representation of the date
+	 * @param int|string $d Date in plain format, or timestamp, or 0 or '' (for current date)
 	 * @param DateFormat $t
 	 * @return string */
 	static function Date(int|string$d,DateFormat$t=DateFormat::HumanDateTime):string
 	{
 		$class=__NAMESPACE__.'\\l10n\\'.static::$code;
-		return call_user_func([$class,'Date'],$d,$t);
+		return \call_user_func([$class,'Date'],$d,$t);
 	}
 
-	/** Получение отдельного языкового значения
-	 * @param array $pool Пул значений
-	 * @param mixed $d Знаение по умолчанию
+	/** Static obtaining value from existed l10n pool
+	 * @param array $l10n Pool of values
+	 * @param mixed $d Default value
 	 * @return mixed */
-	static function Item(array$pool,mixed$d=null):mixed
+	static function Item(array$l10n,mixed$d=null):mixed
 	{
-		return $pool[static::$code] ?? $pool[''] ?? $d;
+		return $l10n[static::$code] ?? $l10n[''] ?? $d;
 	}
 
-	/** Установка языковой переменной
-	 * @param string|int $k Имя переменной
-	 * @param mixed $v Языковое значение */
+	/** Set value
+	 * @param string|int $k Key
+	 * @param mixed $v Value */
 	function offsetSet(mixed$k,mixed$v): void
 	{
 		$this->data[$k]=$v;
 	}
 
-	/** Проверка существования языковой переменной
-	 * @param string|int $offset Имя переменной
+	/** Checking availability
+	 * @param string|int $k Key
 	 * @return bool */
-	function offsetExists(mixed$offset): bool
+	function offsetExists(mixed$k): bool
 	{
-		return isset($this->data[$offset]);
+		return isset($this->data[$k]);
 	}
 
-	/** Удаление языковой переменной
-	 * @param string|int $k Имя переменной */
+	/** Deleting value
+	 * @param string|int $k Key */
 	function offsetUnset(mixed$k): void
 	{
 		unset($this->data[$k]);
 	}
 
-	/** Получение языковой переменной
-	 * @param int|string $k Имя переменной
+	/** Obtaining value
+	 * @param int|string $k Key
 	 * @throws E
 	 * @return mixed */
 	function offsetGet(mixed$k):mixed

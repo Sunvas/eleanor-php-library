@@ -1,72 +1,71 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	Eleanor PHP Library © 2025
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 
 namespace Eleanor\Abstracts;
 use Eleanor\Classes\Files,
 	Eleanor\Interfaces\Loggable;
 
-/** Основа системных исключений: базовые методы для их логирования */
+/** The base of library exceptions: basic methods for logging them */
 abstract class E extends \Exception implements Loggable
 {
-	/** Размер лог файла, после которого он будет сжат */
+	/** Maximum size of the file, after reaching it file will be compressed */
 	const int SIZE_TO_COMPRESS=2097152;#2 Mb
 
-	/** Запись в системных логах и в BSOD */
+	/** For BSOD */
 	function __toString():string
 	{
 		return$this->message;
 	}
 
-	/** Логирование исключения */
+	/** Logging */
 	abstract function Log();
 
-	/** Формирование записи в .log файле
-	 * @param array $data Накопленные данные этого исключения
-	 * @return string Запись для .log файла */
+	/** Entry in a .log file
+	 * @param array $data The accumulated data of this exception
+	 * @return string Item for log file */
 	abstract protected function LogItem(array&$data):string;
 
-	/** Непосредственная запись в лог файл. Лог ошибок состоит из двух файлов: *.log и *.json Первый представляет собой
-	 * текстовый файл для открытия любым удобным способом. Второй - содержит служебную информацию для группировки
-	 * идентичных записей.
-	 * @param string $path Путь к файлу и его имя без расширения (дописывается методом)
-	 * @param string $id Уникальный идентификатор записи
+	/** Writing to a log file. Errors log consists of 2 files: *.log и *.json. The first one is a text file to be
+	 * opened in any suitable way. The second one contains data for grouping identical items.
+	 * @param string $path Path to the file and its name without extension (added by method)
+	 * @param string $id Unique id of item
 	 * @return bool */
 	protected function LogWriter(string$path,string$id):bool
 	{
-		$dir=dirname($path);
+		$dir=\dirname($path);
 
-		if(!is_dir($dir))
+		if(!\is_dir($dir))
 			Files::MkDir($dir);
 
 		$path2log=$path.'.log';
 		$path2json=$path.'.json';
 
-		$is_log=is_file($path2log);
-		$is_json=is_file($path2json);
+		$is_log=\is_file($path2log);
+		$is_json=\is_file($path2json);
 
-		if($is_log and !is_writeable($path2log) or !$is_log and !is_writeable(dirname($path2log)))
-			return trigger_error("File {$path2log} is write-protected!",E_USER_WARNING);
+		if($is_log and !\is_writeable($path2log) or !$is_log and !\is_writeable(\dirname($path2log)))
+			return \trigger_error("File {$path2log} is write-protected!",E_USER_WARNING);
 
 		//Архивация .log файла и удаление json файла (если размер превысил порог, значит его никто не читает)
-		if($is_log and filesize($path2log)>static::SIZE_TO_COMPRESS)
+		if($is_log and \filesize($path2log)>static::SIZE_TO_COMPRESS)
 		{
-			if(static::CompressFile($path2log,substr_replace($path2log,'_'.date('Y-m-d_H-i-s'),strrpos($path2log,'.'),0)))
+			if(static::CompressFile($path2log,\substr_replace($path2log,'_'.\date('Y-m-d_H-i-s'),\strrpos($path2log,'.'),0)))
 			{
-				unlink($path2log);
+				\unlink($path2log);
 
 				if($is_json)
-					unlink($path2json);
+					\unlink($path2json);
 			}
 
-			clearstatcache();
+			\clearstatcache();
 		}
 
-		$json=$is_json ? file_get_contents($path2json) : false;
-		$json=$json ? json_decode($json,true) : [];
+		$json=$is_json ? \file_get_contents($path2json) : false;
+		$json=$json ? \json_decode($json,true) : [];
 
 		$exists=isset($json[$id]);
 		$data=$exists ? $json[$id]['d'] : [];
@@ -85,7 +84,7 @@ abstract class E extends \Exception implements Loggable
 			$length=$json[$id]['l'];
 
 			unset($json[$id]);
-			$size=$is_log ? filesize($path2log) : 0;
+			$size=$is_log ? \filesize($path2log) : 0;
 
 			if($size<$offset+$length)
 			{
@@ -100,17 +99,17 @@ abstract class E extends \Exception implements Loggable
 
 		if($exists)
 		{
-			$fh=fopen($path2log,'rb+');
+			$fh=\fopen($path2log,'rb+');
 
-			if(flock($fh,LOCK_EX))
+			if(\flock($fh,LOCK_EX))
 				$diff=Files::FReplace($fh,$item,$offset,$length);
 			else
 			{
-				fclose($fh);
+				\fclose($fh);
 				return false;
 			}
 
-			if(is_int($diff))
+			if(\is_int($diff))
 				$length+=$diff;
 
 			foreach($json as &$v)
@@ -120,19 +119,19 @@ abstract class E extends \Exception implements Loggable
 		}
 		else
 		{
-			$fh=fopen($path2log,'a');
+			$fh=\fopen($path2log,'a');
 
-			if(flock($fh,LOCK_EX))
+			if(\flock($fh,LOCK_EX))
 			{
-				$size=fstat($fh);
+				$size=\fstat($fh);
 				$offset=$size['size'];
-				$length=strlen($item);
+				$length=\strlen($item);
 
-				fwrite($fh,$item.PHP_EOL.PHP_EOL);
+				\fwrite($fh,$item.PHP_EOL.PHP_EOL);
 			}
 			else
 			{
-				fclose($fh);
+				\fclose($fh);
 
 				return false;
 			}
@@ -140,44 +139,44 @@ abstract class E extends \Exception implements Loggable
 
 		$json[$id]=['o'=>$offset,'l'=>$length,'d'=>$data];
 
-		flock($fh,LOCK_UN);
-		fclose($fh);
+		\flock($fh,LOCK_UN);
+		\fclose($fh);
 
-		file_put_contents($path2json,json_encode($json,JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		\file_put_contents($path2json,\json_encode($json,JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
 		return true;
 	}
 
-	/** Создание архива лог файла для экономии места.
-	 * @param string $source Путь к сжимаемому файлу
-	 * @param string $dest Путь с сжатому файлу (результату)
+	/** Compressing log files for saving disk space
+	 * @param string $source Path to source file
+	 * @param string $dest Path to destination file
 	 * @return bool */
 	static function CompressFile(string$source,string$dest):bool
 	{
-		if(!is_file($source) or file_exists($dest) or !is_writable(dirname($dest)))
+		if(!\is_file($source) or \file_exists($dest) or !\is_writable(\dirname($dest)))
 			return false;
 
-		$hf=fopen($source,'r');
+		$hf=\fopen($source,'r');
 		$r=false;
 
-		if(function_exists('bzopen') and $hbz=bzopen($dest.'.bz2','w'))
+		if(\function_exists('bzopen') and $hbz=\bzopen($dest.'.bz2','w'))
 		{
-			while(!feof($hf))
-				bzwrite($hbz,fread($hf,1024*16));
+			while(!\feof($hf))
+				\bzwrite($hbz,\fread($hf,1024*16));
 
-			bzclose($hbz);
+			\bzclose($hbz);
 			$r=true;
 		}
-		elseif(function_exists('gzopen') and $hgz=gzopen($dest.'.gz','w9'))
+		elseif(\function_exists('gzopen') and $hgz=\gzopen($dest.'.gz','w9'))
 		{
-			while(!feof($hf))
-				gzwrite($hgz,fread($hf,1024*64));
+			while(!\feof($hf))
+				\gzwrite($hgz,\fread($hf,1024*64));
 
-			gzclose($hgz);
+			\gzclose($hgz);
 			$r=true;
 		}
 
-		fclose($hf);
+		\fclose($hf);
 
 		return$r;
 	}

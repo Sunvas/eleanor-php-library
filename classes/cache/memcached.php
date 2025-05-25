@@ -1,36 +1,31 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	Eleanor PHP Library © 2025
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes\Cache;
 use Eleanor;
 
-/** Кэш-машина MemCached */
+/** Adapter of MemCached engine */
 class MemCached implements Eleanor\Interfaces\Cache
 {
-	/** @var string Уникализация кэш машины */
-	private string $u;
-
-	/** @var array Ключи находящихся в кэше */
+	/** @var array Keys in the cache */
 	private array $names;
 
-	/** @var \Memcached Объект MemCached-a */
-	public \Memcached $M;
+	/** @var \Memcached object */
+	readonly \Memcached $M;
 
-	/** @param string $u Уникализации кэша (на одной кэш машине может быть запущено несколько копий Eleanor) */
-	function __construct(string$u='')
+	/** @param string $u Uniqueness for cache-engine */
+	function __construct(readonly string$u='')
 	{
-		$this->u=$u;
-
-		#Константы хоста и порта
+		#Host and port contants
 		$host='Eleanor\\Classes\\Cache\\MEMCACHED_HOST';
 		$port='Eleanor\\Classes\\Cache\\MEMCACHED_PORT';
 
-		#Поскольку данная кеш-машина весьма специфична, рекомендую прописать значения самостоятельно.
+		#Since this cache engine is very specific, it is recommended to use correct values
 		$this->M=new \Memcached($u);
-		$this->M->addServer(defined($host) ? constant($host) : 'localhost',defined($port) ? constant($port) : 11211);
+		$this->M->addServer(\defined($host) ? \constant($host) : 'localhost',\defined($port) ? \constant($port) : 11211);
 
 		$this->names=$this->Get('');
 	}
@@ -40,20 +35,20 @@ class MemCached implements Eleanor\Interfaces\Cache
 		$this->Put('',$this->names);
 	}
 
-	/** Запись значения
-	 * @param string $k Ключ. Рекомендуется задавать в виде тег1_тег2 ...
-	 * @param mixed $v Значение
-	 * @param int $ttl Время жизни этой записи кэша в секундах */
+	/** Setting key=>value
+	 * @param string $k Key. It is recommended to specify key as a concatenating of tags like tag1_tag2...
+	 * @param mixed $v Value
+	 * @param int $ttl Time To Live in seconds */
 	function Put(string$k,mixed$v,int$ttl=0):void
 	{
 		$r=$this->M->set($this->u.$k,$v,$ttl);
 
 		if($r)
-			$this->names[$k]=$ttl+time();
+			$this->names[$k]=$ttl+\time();
 	}
 
-	/** Получение записи из кэша
-	 * @param string $k Ключ
+	/** Retrieving value by key
+	 * @param string $k Key
 	 * @return mixed */
 	function Get(string$k):mixed
 	{
@@ -71,7 +66,7 @@ class MemCached implements Eleanor\Interfaces\Cache
 		return$r;
 	}
 
-	/** Удаление записи из кэша
+	/** Removing value by key
 	 * @param string $k Ключ */
 	function Delete(string$k):void
 	{
@@ -80,12 +75,12 @@ class MemCached implements Eleanor\Interfaces\Cache
 		$this->M->delete($this->u.$k);
 	}
 
-	/** Удаление записей по тегу. Если имя тега пустое - удаляется весь кэш
-	 * @param string $tag Тег */
+	/** Removing value by tag, if key is empty - all cache will be erased
+	 * @param string $tag Tag */
 	function DeleteByTag(string$tag):void
 	{
 		foreach($this->names as $k=>$v)
-			if($tag=='' or !str_contains($k,$tag))
+			if($tag=='' or !\str_contains($k,$tag))
 				$this->Delete($k);
 	}
 }

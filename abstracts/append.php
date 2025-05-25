@@ -1,26 +1,26 @@
 <?php
 /**
 	Eleanor PHP Library © 2025
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Abstracts;
 use Eleanor;
 
-/** Формирование строки при помощи последовательных вызовов методов с параметрами (fluent interface). Результат каждого
- * такого вызова конкатенируется с предыдущим. Пример: $Obj->Part1([params])->Part2([params])->Part3([params])
- * Преобразование объекта в строку, возвращает результат и обнуляет аккумулятор (свойство store). Пример: (string)$Obj
- * Через вызов объекта возможно получить единичный результат метода, не затрагивая общий аккумулятор.
- * Пример: $part=$Obj('Part1'[,params]); */
+/** Making a string by sequential calls of methods with arguments (fluent interface). The result of each call is
+ * appended to the "store" property - accumulator. Example: $Obj->Part1([params])->Part2([params])->Part3([params])
+ * Converting object to string, returns accumulator and clears it. Example: (string)$Obj . It is possible to get a
+ * single method result through object invoking (without affecting the accumulator).
+ * Example: $part=$Obj('Part1'[,params]); */
 abstract class Append extends Eleanor\Basic implements \Stringable
 {
-	/** @var string Аккумулятор результата */
+	/** @var string Accumulator where results of methods calling are appended to */
 	public string $store='';
 
-	/** @var bool Флаг первичного объекта: каждый fluent interface - это отдельный объект, клонированный с первичного */
+	/** @var bool Primary object flag: each fluent interface is a separate secondary object cloned from primary one */
 	readonly bool $primary;
 
-	/** @var array Названия свойств, которые должны стать ссылками на оригинальны свойства при клонировании  */
+	/** @var array Property names that become references to the original properties of primary object when cloning */
 	protected static array $linking=[];
 
 	function __construct()
@@ -33,7 +33,7 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 		$this->primary=false;
 	}
 
-	/** Терминатор Fluent Interface, выдача результата */
+	/** Fluent Interface terminator: accumulator is returned and cleaned */
 	function __toString():string
 	{
 		$s=$this->store;
@@ -41,20 +41,20 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 		return$s;
 	}
 
-	/** Единичное выполнение какого-нибудь шаблона, без изменения текущего буфера
-	 * @param string $n Название шаблона
-	 * @param mixed ...$params Переменные шаблона
+	/** A single method result, without appending to accumulator
+	 * @param string $n Template name
+	 * @param mixed ...$a Variables (arguments)
 	 * @return string */
-	function __invoke(string$n,...$params):string
+	function __invoke(string$n,...$a):string
 	{
-		return$this->_($n,$params);
+		return$this->_($n,$a);
 	}
 
-	/** Реализация fluent interface шаблона
-	 * @param string $n Название шаблона
-	 * @param array $p Параметры шаблона
+	/** Fluent interface realization
+	 * @param string $n Template name
+	 * @param array $a Variables (arguments)
 	 * @return static */
-	function __call(string$n,array$p):static
+	function __call(string$n,array$a):static
 	{
 		if($this->primary)
 		{
@@ -63,18 +63,18 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 			foreach(static::$linking as $v)
 				$O->$v=&$this->$v;
 
-			return$O->__call($n,$p);
+			return$O->__call($n,$a);
 		}
 
-		$this->store.=$this->_($n,$p);
+		$this->store.=$this->_($n,$a);
 
 		return$this;
 	}
 
-	/** Источник шаблонов
-	 * @param string $n Название шаблона
-	 * @param array $p Параметры шаблона */
-	abstract protected function _(string$n,array$p):string;
+	/** Source of fluent interface methods
+	 * @param string $n Name
+	 * @param array $a Arguments */
+	abstract protected function _(string$n,array$a):string;
 }
 
 return Append::class;

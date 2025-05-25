@@ -1,90 +1,91 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	Eleanor PHP Library © 2025
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes\Cache;
 use Eleanor, Eleanor\Classes\E, Eleanor\Classes\Files;
 
-/** Кэш-машина Serialize */
+/** Cache based on files with serialized content */
 class Serialize implements Eleanor\Interfaces\Cache
 {
-	/** @var int Временная метка, до которой файлы кэша считаются никогда не устаревающими */
+	/** @var int The timestamp before which cache files are considered as non obsolete */
 	protected int $threshold=Eleanor\BASE_TIME;
 
-	/** @var string Путь файлам кэша */
-	protected string $path;
+	/** @var string Path to folder where cache is stored */
+	readonly string $path;
 
-	/** @param ?string $path Путь к файлам кэша
+	/** @param ?string $path Path to folder where cache is stored
 	 * @throws E */
 	function __construct(?string$path=null)
 	{
 		$this->path=$path ?? $_SERVER['DOCUMENT_ROOT'].Eleanor\SITEDIR.'cache/';
 
-		if(!is_dir($this->path))
+		if(!\is_dir($this->path))
 			Files::MkDir($this->path);
 
-		if(!is_writeable($this->path))
+		if(!\is_writeable($this->path))
 			throw new E('Folder for %cache% is write-protected',E::SYSTEM,null,['destination'=>$this->path]);
 	}
 
-	/** Запись значения
-	 * @param string $k Ключ. Рекомендуется задавать в виде тег1_тег2 ...
-	 * @param mixed $v Значение
-	 * @param int $ttl Время жизни этой записи кэша в секундах */
+	/** Storing key=>value
+	 * @param string $k Key. It is recommended to specify key as a concatenating of tags like tag1_tag2...
+	 * @param mixed $v Value
+	 * @param int $ttl Time To Live in seconds */
 	function Put(string$k,mixed$v,int$ttl=0):void
 	{
 		$f=$this->path.$k.'.s';
 
-		file_put_contents($f,serialize($v));
-		touch($f,$ttl>0 ? $ttl+time() : $this->threshold);
+		\file_put_contents($f,\serialize($v));
+		\touch($f,$ttl>0 ? $ttl+\time() : $this->threshold);
 	}
 
-	/** Получение записи из кэша
-	 * @param string $k Ключ  */
+	/** Retrieving value by key
+	 * @param string $k Key
+	 * @return mixed */
 	function Get(string$k):mixed
 	{
 		$f=$this->path.$k.'.s';
 
-		if(!is_file($f))
+		if(!\is_file($f))
 			return null;
 
-		$m=filemtime($f);
+		$m=\filemtime($f);
 
-		if($m>$this->threshold && $m<time())
+		if($m>$this->threshold && $m<\time())
 		{
 			$this->Delete($k);
 			return null;
 		}
 
-		return unserialize(file_get_contents($f));
+		return \unserialize(\file_get_contents($f));
 	}
 
-	/** Удаление записи из кэша
+	/** Removing value by key
 	 * @param string $k Ключ */
 	function Delete(string$k):void
 	{
 		Files::Delete($this->path.$k.'.s');
-		clearstatcache();
+		\clearstatcache();
 	}
 
-	/** Удаление записей по тегу. Если имя тега пустое - удаляется весь кэш
-	 * @param string $tag Тег */
+	/** Removing value by tag, if key is empty - all cache will be erased
+	 * @param string $tag Tag */
 	function DeleteByTag(string$tag):void
 	{
-		$tag=str_replace('..','',$tag);
+		$tag=\str_replace('..','',$tag);
 
 		if($tag!='')
 			$tag.='*';
 
-		$files=glob($this->path."*{$tag}.s");
+		$files=\glob($this->path."*{$tag}.s");
 
 		if($files)
 			foreach($files as $f)
 				Files::Delete($f);
 
-		clearstatcache();
+		\clearstatcache();
 	}
 }
 

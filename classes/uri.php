@@ -1,24 +1,25 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	Eleanor PHP Library © 2025
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
 use Eleanor;
 
-/** Генератор относительных URI */
+/** Relative URI generator */
 class Uri extends Eleanor\Basic
 {
-	/** @static Текущий адрес (по которому обратились к скрипту) */
+	/** @static Current URI (from browser's address bar) */
 	static string $current;
 
-	/** Получение ЧеловекоПонятного URI (обработанную переменную $uri из nginx)
+	/** Obtaining the Clean URI (decoded variable $uri from NGINX)
+	 * @url https://en.wikipedia.org/wiki/Clean_URL
 	 * @url https://ru.wikipedia.org/wiki/Человекопонятный_URL
 	 * @return string */
 	static function GetURI():string
 	{
-		/* Для повышения точности, в конфигурацию nginx рекомендуется поместить примерно следующее:
+		/* To improve accuracy, it is recommended to add to the nginx configuration something like this:
 		set $clean_url "";
 
 		if (!-e $request_filename) {
@@ -32,48 +33,48 @@ class Uri extends Eleanor\Basic
 		}
 		*/
 
-		//Перед нам гарантировано ЧПУ
+		//It is guaranteed that we have Clean URL here
 		if(isset($_SERVER['URI']))
 		{
 			$uri=$_SERVER['URI'];
 
-			return urldecode(substr($uri,strlen(Eleanor\SITEDIR)));
+			return \urldecode(\substr($uri,\strlen(Eleanor\SITEDIR)));
 		}
 
 		$uri=$_SERVER['REQUEST_URI'];
 
-		//НЕ ЧПУ: ссылки вида /index.php?param=value
-		if(str_starts_with($uri,$_SERVER['SCRIPT_NAME']))
+		//Not Clean URL: link like /index.php?param=value
+		if(\str_starts_with($uri,$_SERVER['SCRIPT_NAME']))
 			return'';
 
-		//НЕ ЧПУ: корень сайта / или корень сайта с параметрами /?param=value
-		if($uri==='/' or str_starts_with($uri,'/?'))
+		//Not Clean URL: site root / with or without query /?param=value
+		if($uri==='/' or \str_starts_with($uri,'/?'))
 			return'';
 
-		[$uri]=explode('?',static::$current, 2);
+		[$uri]=\explode('?',static::$current, 2);
 
-		return urldecode($uri);
+		return \urldecode($uri);
 	}
 
-	/** Генерация относительных URI (ссылок)
-	 * @param array $slugs ЧПУшная часть ссылки
-	 * @param string $ending Окончание ссылки
-	 * @param array $q Query часть ссылки
+	/** Generating relative URIs
+	 * @param array $slugs Clean URL parts (slugs)
+	 * @param string $ending Ending of URI
+	 * @param array $q Query
 	 * @return string */
 	static function Make(array$slugs=[],string$ending='',array$q=[]):string
 	{
 		$r=[];
 
 		foreach($slugs as $v)
-			$r[]=is_int($v) ? $v : urlencode((string)$v);
+			$r[]=\is_int($v) ? $v : \urlencode((string)$v);
 
-		return join('/',$r).$ending.($q ? static::Query($q) : '');
+		return \join('/',$r).$ending.($q ? static::Query($q) : '');
 	}
 
-	/** Генерация query
-	 * @param array $a Многомерный массив параметров, которых должен быть преобразован в URL
-	 * @param bool $q Добавить ? в начале, если удалось собрать строку запроса
-	 * @param string $d Разделитель параметров, получаемого URL
+	/** Query generator
+	 * @param array $a Parameters for query
+	 * @param bool $q Add ? to the beginning, if it was possible to assemble query string
+	 * @param string $d Separator of parameters
 	 * @return string */
 	static function Query(array$a,bool$q=true,string$d='&amp;'):string
 	{
@@ -81,37 +82,37 @@ class Uri extends Eleanor\Basic
 
 		foreach($a as $k=>&$v)
 		{
-			$k=urlencode($k);
+			$k=\urlencode($k);
 
-			if(is_array($v))
-				static::QueryParam($v,$k.'[',$r);
-			elseif(is_string($v))
-				$r[]=$k.'='.urlencode($v);
-			elseif(is_int($v))
+			if(\is_array($v))
+				static::QueryParam($v,$k.'%5B',$r);//[
+			elseif(\is_string($v))
+				$r[]=$k.'='.\urlencode($v);
+			elseif(\is_int($v))
 				$r[]=$k.'='.$v;
 			elseif($v)
 				$r[]=$k;
 		}
 
-		return($q && $r ? '?' : '').join($d,$r);
+		return($q && $r ? '?' : '').\join($d,$r);
 	}
 
-	/** Генерация параметров для метода Query.
-	 * @param array $a Параметры
-	 * @param string $p Префикс для каждого параметра
-	 * @param array &$r Ссылка на массив для помещения результатов */
+	/** Parameters generator for the Query method.
+	 * @param array $a Parameters
+	 * @param string $p Prefix for each param
+	 * @param array &$r Reference for placing results */
 	protected static function QueryParam(array$a,string$p,array &$r):void
 	{
-		$is_list=array_is_list($a);
+		$is_list=\array_is_list($a);
 
 		foreach($a as $k=>&$v)
-			if(is_array($v))
-				static::QueryParam($v,$p.$k.'][',$r);
+			if(\is_array($v))
+				static::QueryParam($v,$p.$k.'%5D%5B',$r);//][
 			else
-				$r[]=$p.($is_list ? '' : urlencode($k)).']='.(is_int($v) ? $v : urlencode((string)$v));
+				$r[]=$p.($is_list ? '' : \urlencode($k)).'%5D='.(\is_int($v) ? $v : \urlencode((string)$v));
 	}
 }
 
-Uri::$current=substr($_SERVER['REQUEST_URI'],strlen(Eleanor\SITEDIR));
+Uri::$current=\substr($_SERVER['REQUEST_URI'],\strlen(Eleanor\SITEDIR));
 
 return Uri::class;

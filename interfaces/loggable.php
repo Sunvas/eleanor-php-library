@@ -1,12 +1,12 @@
 <?php
 /**
 	Eleanor PHP Library © 2025
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Interfaces;
 
-/** Something than can be logged */
+/** Something that can be logged */
 interface Loggable
 {
 	/** Logging */

@@ -1,48 +1,35 @@
 <?php
 /**
 	Eleanor PHP Library © 2025
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
 use Eleanor;
 
-/** Специальное исключение для MySQL */
+/** Special exception for MySQL */
 class EM extends Eleanor\Abstracts\E
 {
-	/** @var ?int Номер ошибки по версии MySQL */
-	readonly ?int $errno;
-
-	/** @var ?string Проблемный запрос (для QUERY и PREPARED) */
-	readonly ?string $query;
-
-	/** @var ?array Параметры (для CONNECT и PREPARED) */
-	readonly ?array $params;
-
 	const int
-		/** Ошибка при подключении */
+		/** Connection issue */
 		CONNECT=1,
 
-		/** Ошибка в запросе */
+		/** Query issue */
 		QUERY=2,
 
-		/** Ошибка в prepared statement */
+		/** Issue in prepared statement */
 		PREPARED=3;
 
-	/** @param string $message Тип исключения: connect - ошибка при подключении, query - ошибка при запросе
-	 * @param int $code Код исключения
-	 * @param ?\Throwable $previous Предыдущее исключение
-	 * @param ?string $file Путь к файлу, где произошло исключение
-	 * @param ?int $line Номер строки, где произошло исключение
-	 * @param ?int $errno Номер ошибки по версии MySQL
-	 * @param ?string $query Проблемный запрос (для QUERY и PREPARED)
-	 * @param ?array $params Параметры (для CONNECT и PREPARED) */
-	function __construct(string$message,int$code=0,?\Throwable$previous=null,?string$file=null,?int$line=null,?int$errno=null,?string$query=null,?array$params=null)
+	/** @param string $message The same as in \Exception
+	 * @param int $code Constants of class (from above) should be used
+	 * @param ?\Throwable $previous The same as in \Exception
+	 * @param ?string $file Path to the file where the exception occurred
+	 * @param ?int $line Line number where the exception occurred
+	 * @param ?int $errno Error number by MySQL
+	 * @param ?string $query Bad query (for QUERY and PREPARED)
+	 * @param ?array $params Parameters of bag query (for CONNECT and PREPARED) */
+	function __construct(string$message,int$code=0,?\Throwable$previous=null,?string$file=null,?int$line=null,readonly ?int$errno=null,readonly ?string$query=null,readonly ?array$params=null)
 	{
-		$this->errno=$errno;
-		$this->query=$query;
-		$this->params=$params;
-
 		if($file!==null)
 			$this->file=$file;
 
@@ -52,7 +39,7 @@ class EM extends Eleanor\Abstracts\E
 		parent::__construct($message,$code,$previous);
 	}
 
-	/** Для BSOD */
+	/** For BSOD*/
 	function __toString():string
 	{
 		$l10n=new L10n('em');
@@ -65,7 +52,7 @@ class EM extends Eleanor\Abstracts\E
 		};
 	}
 
-	/** Логирование исключения */
+	/** Logging */
 	function Log():void
 	{
 		$type=match($this->code){
@@ -77,13 +64,13 @@ class EM extends Eleanor\Abstracts\E
 
 		$this->LogWriter(
 			Eleanor\Library::$logs.$type,
-			md5($this->line.$this->file.$this->code),
+			\md5($this->line.$this->file.$this->code),
 		);
 	}
 
-	/** Формирование записи в .log файле
-	 * @param array $data Накопленные данные этого исключения
-	 * @return string Запись для .log файла */
+	/** Entry in a .log file
+	 * @param array $data The accumulated data of this exception
+	 * @return string Item for log file */
 	protected function LogItem(array&$data):string
 	{
 		#Запись в переменные нужна для последующего удобного чтения лог-файла любыми читалками
@@ -91,7 +78,7 @@ class EM extends Eleanor\Abstracts\E
 		$data['n']++;
 
 		$data['u']=Uri::$current;
-		$data['d']=date('Y-m-d H:i:s');
+		$data['d']=\date('Y-m-d H:i:s');
 		$data['l']=$this->line;
 		$data['m']=$this->message;
 		$data['f']=$this->file;
@@ -102,7 +89,7 @@ class EM extends Eleanor\Abstracts\E
 		{
 			case self::CONNECT:
 				//Если проблема с конкретным пользователем - запишем данные пользователя в лог
-				if(str_contains($this->message,'Access denied for user'))
+				if(\str_contains($this->message,'Access denied for user'))
 				{
 					$data['h']=$this->params['host'] ?? '';
 					$data['u']=$this->params['user'] ?? '';
@@ -136,7 +123,7 @@ LOG;
 
 			case self::PREPARED:
 				$data['q']=$this->query;
-				$data['p']=serialize($this->params);
+				$data['p']=\serialize($this->params);
 
 				$log.=<<<LOG
 Query: {$data['q']}

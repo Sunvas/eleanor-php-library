@@ -1,8 +1,8 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	Eleanor PHP Library © 2025
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
 $l10n=new L10n('bsod');
@@ -110,7 +110,7 @@ a{text-decoration:none}
 <header>{$l10n['error_occurred']}</header>
 <main><code>{$error}</code>{$file}</main>
 {$hint}{$payload}
-<footer>Powered by <a href="https://eleanor-cms.ru/library" target="_blank">Eleanor PHP Library</a> &copy; {$year}</footer>
+<footer>Powered by <a href="https://eleanor-cms.com/library" target="_blank">Eleanor PHP Library</a> &copy; {$year}</footer>
 </body>
 </html>
 HTML;

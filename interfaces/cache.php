@@ -1,31 +1,31 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	Eleanor PHP Library © 2025
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Interfaces;
 
-/** Кэш-машина */
+/** Interface for cache engines */
 interface Cache
 {
-	/** Запись значения
-	 * @param string $k Ключ. Рекомендуется задавать в виде тег1_тег2 ...
-	 * @param mixed $v Значение
-	 * @param int $ttl Время жизни этой записи кэша в секундах */
+	/** Storing key=>value
+	 * @param string $k Key. It is recommended to specify key as a concatenating of tags like tag1_tag2...
+	 * @param mixed $v Value
+	 * @param int $ttl Time To Live in seconds */
 	function Put(string$k,mixed$v,int$ttl=0):void;
 
-	/** Получение записи из кэша
-	 * @param string $k Ключ
+	/** Retrieving value by key
+	 * @param string $k Key
 	 * @return mixed */
 	function Get(string$k):mixed;
 
-	/** Удаление записи из кэша
+	/** Removing value by key
 	 * @param string $k Ключ */
 	function Delete(string$k):void;
 
-	/** Удаление записей по тегу. Если имя тега пустое - удаляется весь кэш
-	 * @param string $tag Тег */
+	/** Removing value by tag, if key is empty - all cache will be erased
+	 * @param string $tag Tag */
 	function DeleteByTag(string$tag):void;
 }
 

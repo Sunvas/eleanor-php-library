@@ -1,29 +1,29 @@
 <?php
 /**
 	Eleanor PHP Library © 2025
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
 use Eleanor;
 
-/** Простенький класс для отправки сообщений в Telegram и проверки аутентификации через него */
+/** Primitive class for basic support of Telegram: sending messages and checking authentication credentials */
 class Telegram extends Eleanor\Basic
 {
-	/** @var string Entrypoint адрес для обращения к API telegram */
+	/** @var string Entrypoint of Telegram API */
 	protected readonly string $base_url;
 
 	/** @var resource CURL */
 	protected $curl;
 
-	/** Проверка авторизации через Telegram
-	 * @param array $data Входящие данные
-	 * @param string $key API key бота
-	 * @param int $expire Число секунд, после которого вход считается недействительным
-	 * @return array|string Строка при ошибке, array - при успехе */
+	/** Checking authentication credentials
+	 * @param array $data Incoming data
+	 * @param string $key API key
+	 * @param int $expire Number of seconds after which data is considered obsolete
+	 * @return array|string String on error, array on success */
 	static function CheckAuth(array$data,string$key,int$expire=3600):array|string
 	{
-		$signature=(string)($data['hash'] ?? '');
+		$signature=\is_string($data['hash'] ?? 0) ? $data['hash'] : '';
 		$checking=[];
 
 		unset($data['hash']);
@@ -31,44 +31,42 @@ class Telegram extends Eleanor\Basic
 		foreach($data as$k=>$v)
 			$checking[]=$k.'='.$v;
 
-		sort($checking);
+		\sort($checking);
 
-		$checking=implode("\n", $checking);
-		$secret=hash('sha256', $key, true);
-		$hash=hash_hmac('sha256', $checking, $secret);
+		$checking=\implode("\n", $checking);
+		$secret=\hash('sha256', $key, true);
+		$hash=\hash_hmac('sha256', $checking, $secret);
 
-		if(strcmp($hash, $signature)!==0)
+		if(!\hash_equals($hash, $signature))
 			return'FAIL';
 
-		if($expire>0 and (time()-$data['auth_date'])>$expire)
+		if($expire>0 and (\time()-$data['auth_date'])>$expire)
 			return'OUTDATED';
 
 		return$data;
 	}
 
-	/** Создание объекта-экземпляра бота
-	 * @oaram string $api API ключ бота */
+	/** @oaram string $api API key */
 	function __construct(string$api)
 	{
 		$this->base_url="https://api.telegram.org/bot{$api}/";
-		$this->curl=curl_init($this->base_url);
+		$this->curl=\curl_init($this->base_url);
 	}
 
-	/** Деструктор */
 	function __destruct()
 	{
-		curl_close($this->curl);
+		\curl_close($this->curl);
 	}
 
-	/** Создание запроса на сервера Telegram
+	/** Making a request to Telegram
 	 * @url https://core.telegram.org/bots/api#making-requests
-	 * @param string $method Тип запроса
-	 * @param array|string $data Данные
+	 * @param string $method
+	 * @param array|string $data
 	 * @throws E
-	 * @return string Результат */
+	 * @return string */
 	function Request(string$method,array|string$data=''):string
 	{
-		curl_setopt_array($this->curl,[
+		\curl_setopt_array($this->curl,[
 			CURLOPT_URL=>$this->base_url.$method,
 			CURLOPT_RETURNTRANSFER=>true,
 			CURLOPT_ENCODING=>'',//https://php.watch/articles/curl-php-accept-encoding-compression
@@ -78,22 +76,22 @@ class Telegram extends Eleanor\Basic
 			CURLOPT_POSTFIELDS=>$data,
 		]);
 
-		$result=curl_exec($this->curl);
-		$erno=curl_errno($this->curl);
+		$result=\curl_exec($this->curl);
+		$erno=\curl_errno($this->curl);
 
 		if($erno>0)
-			throw new E($erno.': '.curl_error($this->curl),E::SYSTEM);
+			throw new E($erno.': '.\curl_error($this->curl),E::SYSTEM);
 
 		return $result;
 	}
 
-	/** Отправка сообщения
+	/** Sending the messages
 	 * @url https://core.telegram.org/bots/api#sendmessage
-	 * @param int|string $chat_id ID Чата
+	 * @param int|string $chat_id ID of char or user
 	 * @param string $text Текст
-	 * @param array $optional Все необязательные атрибуты
+	 * @param array $optional Extra options
 	 * @throws E
-	 * @return string Результат */
+	 * @return string */
 	function SendMessage(int|string$chat_id,string$text,array$optional=[]):string
 	{
 		$optional['chat_id']=$chat_id;

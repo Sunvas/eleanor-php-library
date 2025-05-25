@@ -1,42 +1,36 @@
 <?php
 /**
 	Eleanor PHP Library © 2025
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
 use Eleanor;
 
-/** Основное системное исключение */
+/** Eleanor's main exception which answers the main question: who is responsible for? */
 class E extends Eleanor\Abstracts\E
 {
-	/** @var string Подсказка как устранить исключение */
-	readonly string $hint;
-
-	/** @var mixed Входящие данные, которые привели к ошибке */
-	readonly mixed $input;
-
 	const int
-		/** Ошибка в php коде: ответственный тот, кто писал этот код (разработчик) */
+		/** Error in php code: the responsible person is the one who wrote this code (developer) */
 		PHP=1,
 
-		/** Ошибка в системе (например, нет доступа для к файлу): ответственный тот, кто может это исправить */
+		/** System error (e.g. no access to a file): the responsible person is the one who can fix it (sysadmin) */
 		SYSTEM=2,
 
-		/** Ошибка в данных (например, некорректный формат файла): ответственный тот, кто эти данные создавал */
+		/** Data error (e.g. incorrect file format): the person who created the data is responsible. */
 		DATA=3,
 
-		/** Ошибка пользователя (например, некорректно переданные данные): ответственных нет 😆 */
+		/** User error (e.g. incorrectly transmitted data): no one is responsible 😆 */
 		USER=4;
 
-	/** @param string $message Описание исключения
-	 * @param int $code Код исключения
-	 * @param ?\Throwable $previous Предыдущее исключение
-	 * @param ?string $file Путь к файлу, где произошло исключение
-	 * @param ?int $line Номер строки, где произошло исключение
-	 * @param string $hint Подсказка по исправлению ситуации
-	 * @param mixed $input Входящие данные, которые привели к исключению */
-	function __construct(string$message,int$code=self::USER,?\Throwable$previous=null,?string$file=null,?int$line=null,string$hint='',mixed$input=null)
+	/** @param string $message The same as in \Exception
+	 * @param int $code Constants of class (from above) should be used
+	 * @param ?\Throwable $previous The same as in \Exception
+	 * @param ?string $file Path to the file where the exception was thrown
+	 * @param ?int $line Line number where the exception was thrown
+	 * @param string $hint Hint on how to fix an exception
+	 * @param mixed $input Input data that thrown an exception */
+	function __construct(string$message,int$code=self::USER,?\Throwable$previous=null,?string$file=null,?int$line=null,readonly string$hint='',readonly mixed$input=null)
 	{
 		if($file!==null)
 			$this->file=$file;
@@ -44,13 +38,10 @@ class E extends Eleanor\Abstracts\E
 		if($line!==null)
 			$this->line=$line;
 
-		$this->hint=$hint;
-		$this->input=$input;
-
 		parent::__construct($message,$code,$previous);
 	}
 
-	/** Для BSOD */
+	/** For BSOD */
 	function __toString():string
 	{
 		$intro=match($this->code){
@@ -64,7 +55,7 @@ class E extends Eleanor\Abstracts\E
 		return$intro.' exception: '.$this->message;
 	}
 
-	/** Логирование исключения */
+	/** Logging */
 	function Log():void
 	{
 		if(!Eleanor\Library::$logs_enabled)
@@ -80,13 +71,13 @@ class E extends Eleanor\Abstracts\E
 
 		$this->LogWriter(
 			Eleanor\Library::$logs.$type,
-			md5($this->line.$this->file.$this->code.$this->message)
+			\md5($this->line.$this->file.$this->code.$this->message)
 		);
 	}
 
-	/** Формирование записи в .log файле
-	 * @param array $data Накопленные данные этого исключения
-	 * @return string Запись для .log файла */
+	/** Entry in a .log file
+	 * @param array $data The accumulated data of this exception
+	 * @return string Item for log file */
 	protected function LogItem(array&$data):string
 	{
 		#Запись в переменные нужна для последующего удобного чтения лог-файла любыми читалками
@@ -94,7 +85,7 @@ class E extends Eleanor\Abstracts\E
 		$data['n']++;
 
 		$data['u']=Uri::$current;
-		$data['d']=date('Y-m-d H:i:s');
+		$data['d']=\date('Y-m-d H:i:s');
 		$data['l']=$this->line;
 		$data['m']=$this->getMessage();
 		$data['f']=$this->file;
@@ -102,7 +93,7 @@ class E extends Eleanor\Abstracts\E
 		$log=$this->message.PHP_EOL;
 
 		if(isset($this->extra['input']))
-			$log.='JSONed input: '.json_encode($this->extra['input'],JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL;
+			$log.='JSONed input: '.\json_encode($this->extra['input'],JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL;
 
 		$log.=<<<LOG
 File: {$data['f']}[{$data['l']}]

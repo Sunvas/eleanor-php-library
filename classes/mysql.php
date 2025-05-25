@@ -1,31 +1,29 @@
 <?php
 /**
 	Eleanor PHP Library © 2025
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
 use Eleanor;
 use function Eleanor\BugFileLine;
 
-/** Библиотека для работы с MySQL, с использованием драйвера MySQLi
- * Не учитывается SELECT @@max_allowed_packet
- * @property \MySQLi $M Объект базы данных */
+/** Wrapper for MySQLi driver */
 class MySQL extends Eleanor\Basic
 {
-	/** @var \MySQLi */
+	/** @var \MySQLi driver */
 	readonly \MySQLi $M;
 
-	/** Соединение с БД
+	/** Connection to MySQL
 	 * @url https://www.php.net/manual/ru/mysqli.construct.php
-	 * @param null|string|\MySQLi $host Объект MySQLi (остальные параметры будут проигнорированы), имя хоста или IP
-	 * @param ?string $user Имя пользователя MySQL
-	 * @param ?string $pass Пароль MySQL
-	 * @param ?string $db База данных по умолчанию
-	 * @param string $charset Кодировка базы данных по умолчанию https://dev.mysql.com/doc/refman/8.0/en/charset-charsets.html
-	 * @param bool $sync Флаг синхронизации времени БД с временем сервера
-	 * @param ?int $port Номер порта для попытки подключения к серверу MySQL
-	 * @param ?string $socket Сокет или именованный пайп
+	 * @param null|string|\MySQLi $host MySQLi object, IP or hostname
+	 * @param ?string $user Username
+	 * @param ?string $pass Password
+	 * @param ?string $db Default DB name
+	 * @param string $charset See https://dev.mysql.com/doc/refman/8.4/en/charset-charsets.html
+	 * @param bool $sync Time synchronizing flag (see description of SyncTimeZone method)
+	 * @param ?int $port Port number
+	 * @param ?string $socket Socket or file
 	 * @throws EM */
 	function __construct(null|string|\MySQLi$host=null,?string$user=null,#[\SensitiveParameter]?string$pass=null,?string$db=null,string$charset='utf8mb4',bool$sync=true,?int$port=null,?string$socket=null)
 	{
@@ -54,64 +52,63 @@ class MySQL extends Eleanor\Basic
 		$this->M->close();
 	}
 
-	/** "Прокси" для доступа к свойствам объекта MySQLi
-	 * @param string $n Имя
+	/** "Proxy" for accessing to MySQLi driver properties
+	 * @param string $n Name of property
 	 * @throws E
 	 * @return mixed */
 	function __get(string$n):mixed
 	{
-		if(property_exists($this->M,$n))
+		if(\property_exists($this->M,$n))
 			return $this->M->$n;
 
 		return parent::__get($n);
 	}
 
-	/** "Прокси" для доступа к методам объектов MySQLi
-	 * @param string $n Имя вызываемого метода
-	 * @param array $p Параметры вызова
-	 * @throws E
+	/** "Proxy" for calling to MySQLi driver methods
+	 * @param string $n Name of method
+	 * @param array $a Array of arguments
+	 * @throws \BadMethodCallException
 	 * @return mixed */
-	function __call(string$n,array$p):mixed
+	function __call(string$n,array$a):mixed
 	{
-		if(method_exists($this->M,$n))
-			return call_user_func_array([$this->M,$n],$p);
+		if(\method_exists($this->M,$n))
+			return \call_user_func_array([$this->M,$n],$a);
 
-		return parent::__call($n,$p);
+		return parent::__call($n,$a);
 	}
 
-	/** Синхронизация времени БД со временем PHP (применение часового пояса). Синхронизируются только поля типа
-	 * TIMESTAMP */
+	/** Synchronising time of DB with time of PHP (applying timezone). Synchronization works only for TIMESTAMP fields */
 	function SyncTimeZone():void
 	{
-		$t=date_offset_get(date_create());
+		$t=\date_offset_get(\date_create());
 		$s=$t>0 ? '+' : '-';
-		$t=abs($t);
-		$s.=floor($t/3600).':'.($t%3600);
+		$t=\abs($t);
+		$s.=\floor($t/3600).':'.($t%3600);
 
 		$this->M->query("SET TIME_ZONE='{$s}'");
 	}
 
-	/** Начало транзакции */
+	/** Transaction start */
 	function Transaction():void
 	{
 		$this->M->autocommit(false);
 	}
 
-	/** Подтверждение транзакции */
+	/** Transaction commit */
 	function Commit():void
 	{
 		$this->M->commit();
 		$this->M->autocommit(true);
 	}
 
-	/** Откат транзакции */
+	/** Transaction rollback */
 	function RollBack():void
 	{
 		$this->M->rollback();
 		$this->M->autocommit(true);
 	}
 
-	/** Выполнение SQL запроса в базу
+	/** Performing query
 	 * @param string $q SQL запрос
 	 * @param int $mode
 	 * @throws EM
@@ -133,11 +130,11 @@ class MySQL extends Eleanor\Basic
 
 	const string IGNORE=' IGNORE';
 
-	/** Обертка для удобного осуществления INSERT запросов
-	 * @param string $t Имя таблицы, куда необходимо вставить данные
-	 * @param array $d Данные. Форматы описаны в методе Insert4Query
-	 * @param bool|string $ignore_odku Флаг IGNORE или содержимое ON DUPLICATE KEY UPDATE
-	 * @param ?array $params Параметры для Prepared statements, при NULL будет вызвана Query
+	/** Wrapper for INSERT queries
+	 * @param string $t Table name
+	 * @param array $d Data. Formats are described in Insert4Query method
+	 * @param bool|string $ignore_odku IGNORE flag or contents for ON DUPLICATE KEY UPDATE structure
+	 * @param ?array $params Prepared statement parameters, if NULL - Query will be called
 	 * @return int Insert ID
 	 * @throws EM */
 	function Insert(string$t,array$d,bool|string$ignore_odku=true,?array$params=[]):int
@@ -170,11 +167,11 @@ class MySQL extends Eleanor\Basic
 		return$this->M->insert_id;
 	}
 
-	/** Обертка для удобного осуществления REPLACE запросов
-	 * @param string $t Имя таблицы, куда необходимо вставить данные
-	 * @param array $d Данные. Форматы описаны в методе Insert4Query
-	 * @param bool $ignore Флаг IGNORE
-	 * @param bool $query Флаг вызова query, вместо execute
+	/** Wrapper for REPLACE queries
+	 * @param string $t Table name
+	 * @param array $d Data. Formats are described in Insert4Query method
+	 * @param bool $ignore IGNORE flag
+	 * @param bool $query Flag to force using Query instead of Execute
 	 * @return int Affected rows
 	 * @throws EM */
 	function Replace(string$t,array$d,bool$ignore=false,bool$query=false):int
@@ -193,19 +190,19 @@ class MySQL extends Eleanor\Basic
 		return$this->Execute("REPLACE{$ext} INTO `{$t}` ".$insert,$params,false)->affected_rows;
 	}
 
-	/** Генерация секции INSERT для Query
-	 * @param array $d Данные в одном из форматов:
-	 * [ 'field1'=>'value1', 'field2'=>'value2' ] или
-	 * [ 'field1'=>[ 'values11', 'value12' ], 'field2'=>[ 'value21', 'value22' ] ] или
+	/** Generating INSERT section for Query
+	 * @param array $d Data in one of the formats:
+	 * [ 'field1'=>'value1', 'field2'=>'value2' ] or
+	 * [ 'field1'=>[ 'values11', 'value12' ], 'field2'=>[ 'value21', 'value22' ] ] or
 	 * [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
 	 * @return string */
 	function Insert4Query(array$d):string
 	{
 		#Detecting [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
-		if(array_is_list($d))
+		if(\array_is_list($d))
 		{
-			$k=array_key_first($d);
-			$fields=array_keys($d[$k]);
+			$k=\array_key_first($d);
+			$fields=\array_keys($d[$k]);
 			$values=[];
 
 			foreach($d as $input)
@@ -215,35 +212,35 @@ class MySQL extends Eleanor\Basic
 				foreach($fields as $index=>$field)
 					$group[]=$this->Escape($input[$field] ?? $input[$index] ?? null);
 
-				$values[]='('.join(',',$group).')';
+				$values[]='('.\join(',',$group).')';
 			}
 
-			$fields='(`'.join('`,`',$fields).'`)';
+			$fields='(`'.\join('`,`',$fields).'`)';
 		}
 		else
 		{
-			$fields='(`'.join('`,`',array_keys($d)).'`)';
+			$fields='(`'.\join('`,`',\array_keys($d)).'`)';
 
-			$values=array_values($d);
-			$values=array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
-			$values=isset($values[1]) ? array_map(null,...$values) : [...$values];//Из строк в столбцы
-			$values=array_map(fn($item)=>'('.join(',',array_map($this->Escape(...),$item)).')',$values);
+			$values=\array_values($d);
+			$values=\array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
+			$values=isset($values[1]) ? \array_map(null,...$values) : [...$values];//Из строк в столбцы
+			$values=\array_map(fn($item)=>'('.\join(',',\array_map($this->Escape(...),$item)).')',$values);
 		}
 
-		return $fields.'VALUES'.join(',',$values);
+		return $fields.'VALUES'.\join(',',$values);
 	}
 
-	/** Генерация секции INSERT для Prepared Statements
-	 * @param array $d Описание смотреть в методе Insert4Query
-	 * @return array [string INSERT,array $params] */
+	/** Generating INSERT section for Prepared Statements
+	 * @param array $d Data. See formats in Insert4Query description
+	 * @return array [string INSERT section,array $params] */
 	static function Insert4Prepared(array$d):array
 	{
 		$params=[];
 
-		if(array_is_list($d))
+		if(\array_is_list($d))
 		{
-			$k=array_key_first($d);
-			$fields=array_keys($d[$k]);
+			$k=\array_key_first($d);
+			$fields=\array_keys($d[$k]);
 			$values=[];
 
 			foreach($d as $input)
@@ -266,14 +263,14 @@ class MySQL extends Eleanor\Basic
 					$group[]=$v;
 				}
 
-				$values[]='('.join(',',$group).')';
+				$values[]='('.\join(',',$group).')';
 			}
 
 			$fields='(`'.join('`,`',$fields).'`)';
 		}
 		else
 		{
-			$fields='(`'.join('`,`',array_keys($d)).'`)';
+			$fields='(`'.\join('`,`',\array_keys($d)).'`)';
 			$map=function($v)use(&$params){
 				$bypass=static::Bypass($v);
 
@@ -284,22 +281,22 @@ class MySQL extends Eleanor\Basic
 				return'?';
 			};
 
-			$values=array_values($d);
-			$values=array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
-			$values=isset($values[1]) ? array_map(null,...$values) : [...$values];//Из строк в столбцы
-			$values=array_map(fn($item)=>'('.join(',',array_map($map,$item)).')',$values);
+			$values=\array_values($d);
+			$values=\array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
+			$values=isset($values[1]) ? \array_map(null,...$values) : [...$values];//Из строк в столбцы
+			$values=\array_map(fn($item)=>'('.\join(',',\array_map($map,$item)).')',$values);
 		}
 
-		return[$fields.'VALUES'.join(',',$values),$params];
+		return[$fields.'VALUES'.\join(',',$values),$params];
 	}
 
-	/** Обертка для удобного осуществления UPDATE запросов
-	 * @param string $t Имя таблицы, где необходимо обновить данные
-	 * @param array $d Массив изменяемых данных. С форматами можно ознакомиться в Insert4Query
-	 * @param string|array $w Условие обновления. Секция WHERE, без ключевого слова WHERE.
-	 * @param ?array $params Параметры для Prepared statements, при NULL будет вызвана Query
-	 * @param bool $ignore Флаг IGNORE
-	 * @return int Affected rows
+	/** Wrapper for UPDATE queries
+	 * @param string $t Table name
+	 * @param array $d Data for update
+	 * @param string|array $w Conditions (WHERE section without WHERE keyword).
+	 * @param ?array $params Prepared statement parameter, if NULL - Query will be called
+	 * @param bool $ignore IGNORE flag
+	 * @return int Amount of affected rows
 	 * @throws EM */
 	function Update(string$t,array$d,string|array$w='',?array$params=[],bool$ignore=true):int
 	{
@@ -331,10 +328,10 @@ class MySQL extends Eleanor\Basic
 				$q.="`{$k}`={$v},";
 			}
 
-			array_unshift($params,...array_values($d));
+			\array_unshift($params,...\array_values($d));
 		}
 
-		$q=rtrim($q,',');
+		$q=\rtrim($q,',');
 		$q.=$this->Where($w);
 
 		if($params)
@@ -344,12 +341,12 @@ class MySQL extends Eleanor\Basic
 		return$this->M->affected_rows;
 	}
 
-	/** Обертка для удобного осуществления DELETE запросов
-	 * @param string $t Имя таблицы, откуда необходимо удалить данные
-	 * @param string|array $w Секция WHERE, без ключевого слова WHERE. Если не заполнять - выполнится TRUNCATE запрос.
-	 * @param array $params Параметры для Prepared statements, значение $w в этом случае должно быть строковым
-	 * @param bool $ignore Флаг IGNORE
-	 * @return int Affected rows
+	/** Wrapper for DELETE queries
+	 * @param string $t Table name
+	 * @param string|array $w Conditions (WHERE section without WHERE keyword), when empty table will be TRUNCATEd
+	 * @param array $params Prepared statement parameters (in that case $w should be string)
+	 * @param bool $ignore IGNORE flag
+	 * @return int Amount of deleted rows
 	 * @throws EM */
 	function Delete(string$t,string|array$w='',array$params=[],bool$ignore=true):int
 	{
@@ -363,9 +360,9 @@ class MySQL extends Eleanor\Basic
 		return$this->M->affected_rows;
 	}
 
-	/** Преобразование массива в последовательность для конструкции IN(). Данные автоматически экранируются
-	 * @param array $a Данные для конструкции IN
-	 * @param bool $not Включение конструкции NOT IN. Для оптимизации запросов, по возможности используется = вместо IN
+	/** Converting array to a sequence for the IN() statement with escaping.
+	 * @param array $a Data
+	 * @param bool $not Flag for NOT IN
 	 * @return string */
 	function In(array$a,bool$not=false):string
 	{
@@ -381,8 +378,8 @@ class MySQL extends Eleanor\Basic
 		return($not ? ' NOT' : '').' IN ('.join(',',$a).')';
 	}
 
-	/** Генерация секции WHERE
-	 * @param string|array $w Условия
+	/** Generating WHERE conditions
+	 * @param string|array $w Conditions
 	 * @return string */
 	function Where(string|array$w):string
 	{
@@ -397,18 +394,18 @@ class MySQL extends Eleanor\Basic
 		return $w ? ' WHERE '.$w : '';
 	}
 
-	/** Обход экранирование, если значение параметра является безопасным
-	 * @param mixed $p Значение параметра
-	 * @return mixed NULL если значение нуждается в экранировании */
+	/** Escaping bypass when value is safe
+	 * @param mixed $p Value
+	 * @return mixed NULL when value need to be escaped */
 	static function Bypass(mixed$p):mixed
 	{
 		if($p===null)
 			return'NULL';
 
-		if(is_int($p) or is_float($p))
+		if(\is_int($p) or \is_float($p))
 			return$p;
 
-		if(is_bool($p))
+		if(\is_bool($p))
 			return(int)$p;
 
 		if($p instanceof \Closure)
@@ -417,9 +414,9 @@ class MySQL extends Eleanor\Basic
 		return null;
 	}
 
-	/** Экранирование опасных символов в строках
-	 * @param mixed $p Значение параметра для экранирования
-	 * @param bool $q Флаг включения одинарных кавычек в начало и в конец результата
+	/** Escaping unsafe characters in strings
+	 * @param mixed $p Value for escaping
+	 * @param bool $q Flag for putting result into quotes
 	 * @return mixed */
 	function Escape(mixed$p,bool$q=true):mixed
 	{
@@ -428,21 +425,24 @@ class MySQL extends Eleanor\Basic
 		if($bypass!==null)
 			return$bypass;
 
-		if(is_array($p))
+		if(\is_array($p))
 			return$this->In($p);
 
-		if(!is_string($p) or !ctype_alnum($p))
-			$p=$this->M->real_escape_string((string)$p);
+		if(!\is_string($p))
+			$p=(string)$p;
+
+		if($p!=='' and !\ctype_alnum($p))
+			$p=$this->M->real_escape_string($p);
 
 		return$q ? "'{$p}'" : $p;
 	}
 
-	/** Prepared statements shortcut.
-	 * @param string $q Запрос
-	 * @param array $params Параметры запроса
-	 * @param bool $result Флаг возврата результата
+	/** Prepared statements shortcut
+	 * @param string $q Query
+	 * @param array $params Parameters
+	 * @param bool $result Flag for returning MySQLi_result, instead of MySQLi_stmt
 	 * @throws EM
-	 * @return \MySQLi_result | \MySQLi_stmt (в зависимости от $result) */
+	 * @return \MySQLi_result | \MySQLi_stmt (depending on $result) */
 	function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt
 	{
 		if(!$params)
@@ -461,30 +461,30 @@ class MySQL extends Eleanor\Basic
 		throw new EM($stmt->error,EM::PREPARED,...BugFileLine($this),errno:$stmt->errno,query:$q,params:$params);
 	}
 
-	/** При прямой передаче параметров в mysqli::execute_query, каждый элемент из params интерпретируется как строка "Each value is treated as a string."
-	 * Этот же метод позволяет передать в prepared statement числа
+	/** When parameters are transferred directly to mysqli::execute_query,"Each value is treated as a string."
+	 * This method treats each parameter basing on its type.
 	 * @param \MySQLi_stmt $stmt
-	 * @param array $params Данные
+	 * @param array $params Parameters
 	 * @return bool
 	 * @throws \mysqli_sql_exception */
 	static function BindParams(\MySQLi_stmt$stmt,array$params):bool
 	{
-		//Если массив целиком состоит из строковых значений
-		if(array_reduce($params,fn($carry,$item)=>$carry && is_string($item),true))
+		//Case when all parameters are strings
+		if(\array_reduce($params,fn($carry,$item)=>$carry && \is_string($item),true))
 			return$stmt->execute($params);
 
 		$types='';
 
 		foreach($params as &$p)
-			if(is_int($p))
+			if(\is_int($p))
 				$types.='i';
-			elseif(is_float($p))
+			elseif(\is_float($p))
 				$types.='d';
 			else
 			{
 				$types.='s';
 
-				if(!is_string($p))
+				if(!\is_string($p))
 					$p=(string)$p;
 			}
 

@@ -1,57 +1,56 @@
 <?php
 /**
-	Eleanor PHP Library © 2024
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	Eleanor PHP Library © 2025
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
 use Eleanor;
 
-/** Поддержка punycode (кириллические домены) */
+/** Punycode support (cyrillic domains) */
 class Punycode extends Eleanor\Basic
 {
-	/** Кодирование и декодирование домена в/из Punycode. Метод сам определяет, представлен ли домен в нужной форме и,
-	 * если нет - выполняет преобразования.
-	 * @param string $domain Доменное имя
-	 * @param bool $encode Флаг кодирования в Punycode
+	/** Domain encoding and decoding to/from Punycode.
+	 * @param string $domain Domain name
+	 * @param bool $encode Punycode encoding flag
 	 * @return ?string */
 	static function Domain(string$domain,bool$encode=true):?string
 	{
 		if($encode)
 		{
 			if(Eleanor\CHARSET!='utf-8')
-				$domain=mb_convert_encoding($domain,'utf-8',Eleanor\CHARSET);
+				$domain=\mb_convert_encoding($domain,'utf-8',Eleanor\CHARSET);
 
-			$domain=explode('.',$domain);
+			$domain=\explode('.',$domain);
 
 			foreach($domain as &$d)
-				if(!str_starts_with($d,'xn--') and preg_match('#[^a-z.\-]#i',$d)>0)
-					$d=self::Encode(mb_strtolower($d,'utf-8'));
+				if(!\str_starts_with($d,'xn--') and \preg_match('#[^a-z.\-]#i',$d)>0)
+					$d=self::Encode(\mb_strtolower($d,'utf-8'));
 
 			$domain=join('.',$domain);
 		}
 		else
 		{
-			$domain=explode('.',$domain);
+			$domain=\explode('.',$domain);
 
 			foreach($domain as &$d)
-				$d=self::Decode(strtolower($d));
-			$domain=join('.',$domain);
+				$d=self::Decode(\strtolower($d));
+			$domain=\join('.',$domain);
 
 			if(Eleanor\CHARSET!='utf-8')
-				$domain=mb_convert_encoding($domain,Eleanor\CHARSET,'utf-8');
+				$domain=\mb_convert_encoding($domain,Eleanor\CHARSET,'utf-8');
 		}
 
 		return$domain;
 	}
 
-	/** Кодирование Punycode в utf-8 строку
-	 * @param string $s Домен в Punycode
+	/** Decoding punycode to utf-8 string
+	 * @param string $source
 	 * @return string */
-	static function Decode(string$s):string
+	static function Decode(string$source):string
 	{
-		if(!str_starts_with($s,'xn--'))
-			return$s;
+		if(!\str_starts_with($source,'xn--'))
+			return$source;
 
 		$first=700;
 		$bias=72;
@@ -59,22 +58,23 @@ class Punycode extends Eleanor\Basic
 		$char=0x80;
 		$decoded=[];
 
-		$dpos=strrpos($s,'-');
-		if($dpos>4)#4 - это длина префикса xn--
+		$dpos=\strrpos($source,'-');
+		if($dpos>4)#4 - length of xn-- prefix
 			for($k=4;$k<$dpos;++$k)
-				$decoded[]=ord($s[$k]);
+				$decoded[]=\ord($source[$k]);
 
-		$decol=count($decoded);
-		$encol=strlen($s);
+		$decol=\count($decoded);
+		$encol=\strlen($source);
 
 		for($enco_idx=$dpos ? $dpos+1 : 0;$enco_idx<$encol;++$decol)
 		{
 			$old_idx=$idx;
 			$w=1;
 			$k=36;
+
 			while(true)
 			{
-				$cp=ord($s[$enco_idx++]);
+				$cp=\ord($source[$enco_idx++]);
 				$digit=$cp-48<10 ? $cp-22 : ($cp-65<26 ? $cp-65 : ($cp-97<26 ? $cp-97 : 36));
 				$idx+=$digit*$w;
 				$t=$k<=$bias ? 1 : ($k>=$bias+26 ? 26 : $k-$bias);
@@ -84,15 +84,15 @@ class Punycode extends Eleanor\Basic
 				$k+=36;
 			}
 
-			$delta=floor(($idx-$old_idx)/$first);
+			$delta=\floor(($idx-$old_idx)/$first);
 			$first=2;
-			$delta+=floor($delta/($decol+1));
+			$delta+=\floor($delta/($decol+1));
 
 			for($k=0;$delta>455;$k+=36)
-				$delta=floor($delta/35);
+				$delta=\floor($delta/35);
 
-			$bias=floor($k+36*$delta/($delta+38));
-			$char+=floor($idx/($decol+1));
+			$bias=\floor($k+36*$delta/($delta+38));
+			$char+=\floor($idx/($decol+1));
 			$idx%=$decol+1;
 
 			if($decol>0)
@@ -102,34 +102,34 @@ class Punycode extends Eleanor\Basic
 			$decoded[$idx++]=$char;
 		}
 
-		$s='';
+		$source='';
 
 		foreach($decoded as &$v)
 			if($v<128)
-				$s.=chr($v);#7bit are transferred literally
+				$source.=\chr($v);#7bit are transferred literally
 			elseif($v<(1<<11))
-				$s.=chr(192+($v>>6)).chr(128+($v&63));#2 bytes
+				$source.=\chr(192+($v>>6)).\chr(128+($v&63));#2 bytes
 			elseif($v<(1<<16))
-				$s.=chr(224+($v>>12)).chr(128+($v>>6&63)).chr(128+($v&63));#3 bytes
+				$source.=\chr(224+($v>>12)).\chr(128+($v>>6&63)).\chr(128+($v&63));#3 bytes
 			elseif($v<(1<<21))
-				$s.=chr(240+($v>>18)).chr(128+($v>>12&63)).chr(128+($v>>6&63)).chr(128+($v&63));# 4 bytes
+				$source.=\chr(240+($v>>18)).\chr(128+($v>>12&63)).\chr(128+($v>>6&63)).\chr(128+($v&63));# 4 bytes
 			else
-				$s.=0xFFFC;
+				$source.=0xFFFC;
 
-		return$s;
+		return$source;
 	}
 
-	/** Декодирование utf-8 строки в Punycode
-	 * @param string $s Домен
+	/** Encoding utf-8 string to punycode
+	 * @param string $source
 	 * @return ?string */
-	static function Encode(string$s):?string
+	static function Encode(string$source):?string
 	{
 		$values=$unicode=[];
-		$n=strlen($s);
+		$n=\strlen($source);
 
 		for($i=0;$i<$n;$i++)
 		{
-			$v=ord($s[$i]);
+			$v=\ord($source[$i]);
 			if($v<128)
 				$unicode[]=$v;
 			else
@@ -139,7 +139,7 @@ class Punycode extends Eleanor\Basic
 
 				$values[]=$v;
 
-				if(count($values)==$cc)
+				if(\count($values)==$cc)
 				{
 					$unicode[]=$cc==3 ? $values[0]%16*4096 + $values[1]%64*64 + $values[2]%64 : $values[0]%32*64 + $values[1]%64;
 					$values=[];
@@ -148,19 +148,19 @@ class Punycode extends Eleanor\Basic
 		}
 
 		#utf to unicode func
-		unset($s,$values);
+		unset($source,$values);
 
 		$delta=$cc=0;
 		$n=128;
 		$bias=72;
 		$first=700;
 		$ex=$bs='';
-		$ucnt=count($unicode);
+		$ucnt=\count($unicode);
 
 		foreach($unicode as &$v)
 			if($v<128)
 			{
-				$bs.=chr($v);
+				$bs.=\chr($v);
 				$cc++;
 			}
 
@@ -196,23 +196,23 @@ class Punycode extends Eleanor\Basic
 							break;
 
 						$ex.=self::EncodeDigit($t+($q-$t)%(36-$t));
-						$q=floor(($q-$t)/(36-$t));
+						$q=\floor(($q-$t)/(36-$t));
 						$k+=36;
 					}
 					$ex.=self::EncodeDigit($q);
 
-					$delta=floor($delta/$first);
-					$delta+=floor($delta/($cc+1));
+					$delta=\floor($delta/$first);
+					$delta+=\floor($delta/($cc+1));
 					$first=2;
 					$k=0;
 
 					while($delta>455)
 					{
-						$delta=floor($delta/35);
+						$delta=\floor($delta/35);
 						$k+=36;
 					}
 
-					$bias=$k+floor(36*$delta/($delta+38));
+					$bias=$k+\floor(36*$delta/($delta+38));
 
 					$delta=0;
 					$cc++;
@@ -236,7 +236,7 @@ class Punycode extends Eleanor\Basic
 
 	protected static function EncodeDigit($d):string
 	{
-		return chr($d+22+75*($d<26));
+		return \chr($d+22+75*($d<26));
 	}
 }
 

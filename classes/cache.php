@@ -1,52 +1,52 @@
 <?php
 /**
 	Eleanor PHP Library © 2025
-	https://eleanor-cms.ru/library
-	library@eleanor-cms.ru
+	https://eleanor-cms.com/library
+	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
 
-/** Поддержка кэша */
+/** Wrapper for cache engines */
 class Cache extends \Eleanor\Basic
 {
-	/** @var string Путь к файлам "вечного" хранилища. О том, что такое "вечный кэш", читайте ниже */
+	/** @var string The path to the “eternal" cache files. Read about “eternal" cache in the constructor */
 	readonly string $storage;
 
-	/** @var \Eleanor\Interfaces\Cache Объект кэш-машины */
-	public \Eleanor\Interfaces\Cache $Engine;
+	/** @var \Eleanor\Interfaces\Cache Object of cache engine */
+	readonly \Eleanor\Interfaces\Cache $Engine;
 
-	/** @const Параметры создаваемого json файла */
+	/** @const For "eternal cache" files */
 	protected const int JSON=JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
-	/** @param ?string $path Путь для хранения файлов для внутренней кэш-машины (когда отсутствуют внешние)
-	 * @param ?string $storage Путь сохранения "вечного" кэша. Вечный кэш это неустаревающие данные в JSON формате, которые, при необходимости, возможно править вручную.
+	/** @param ?string $storage The path of storing “eternal” cache. Eternal cache is timeless data in JSON format, which can be manually edited if necessary.
+	 * @param ?string $path Path of storing files of internal cache engine (when no external cache engines available)
 	 * @throws E */
-	function __construct(?string$path=null,?string$storage=null)
+	function __construct(?string$storage=null,?string$path=null)
 	{
 		$cachedir=__DIR__.'/cache/';
 
-		if(class_exists('\\Memcache',false) and is_file($cachedir.'memcache.php'))
-			$this->Engine=new \Eleanor\Classes\Cache\MemCache(crc32(__DIR__));
-		elseif(class_exists('\\Memcached',false) and is_file($cachedir.'memcached.php'))
-			$this->Engine=new \Eleanor\Classes\Cache\MemCached(crc32(__DIR__));
+		if(\class_exists('\\Memcache',false) and \is_file($cachedir.'memcache.php'))
+			$this->Engine=new \Eleanor\Classes\Cache\MemCache(\crc32(__DIR__));
+		elseif(\class_exists('\\Memcached',false) and \is_file($cachedir.'memcached.php'))
+			$this->Engine=new \Eleanor\Classes\Cache\MemCached(\crc32(__DIR__));
 		else
 			$this->Engine=new \Eleanor\Classes\Cache\Serialize($path);
 
-		$this->storage=$storage ? rtrim($storage,'/\\') : $_SERVER['DOCUMENT_ROOT'].\Eleanor\SITEDIR.'cache/storage';
+		$this->storage=$storage ? \rtrim($storage,'/\\') : $_SERVER['DOCUMENT_ROOT'].\Eleanor\SITEDIR.'cache/storage';
 
-		if(!is_dir($this->storage))
+		if(!\is_dir($this->storage))
 			Files::MkDir($this->storage);
 
-		if(!is_writeable($this->storage))
+		if(!\is_writeable($this->storage))
 			throw new E('Folder for %cache/storage% is write-protected',E::SYSTEM);
 	}
 
-	/** Запись данных в кэш
-	 * @param string $key Ключ (имя ячейки хранения кэша
-	 * @param mixed $value Хранимые данные
-	 * @param int $ttl Время хранения в секундах
-	 * @param bool $eternal Запись в качестве "вечного" кэша
-	 * @param int $hopeless Время безнадежного устаревания кэша. Используется для предотвращения dog-pile effect. Если меньше $ttl, то преобразуется в значение $ttl*2
+	/** Storing key=>value to cache
+	 * @param string $key Key. It is recommended to specify key as a concatenating of tags like tag1_tag2...
+	 * @param mixed $value Stored data
+	 * @param int $ttl Time To Live in seconds
+	 * @param bool $eternal Flag of storing like "eternal" cache
+	 * @param int $hopeless Time of hopeless cache obsoletion. Used to prevent dog-pile effect. If less than $ttl, it is converted to $ttl*2
 	 * По умолчанию в два раза больше $ttl.
 	 * @throws E */
 	function Put(string$key,mixed$value=false,int$ttl=0,bool$eternal=false,int$hopeless=0):void
@@ -57,27 +57,27 @@ class Cache extends \Eleanor\Basic
 		if($value===false)
 			$this->Delete($key,true);
 		else
-			$this->Engine->Put($key,$hopeless>0 ? [$value,$ttl,time()+$ttl] : [$value],$hopeless);
+			$this->Engine->Put($key,$hopeless>0 ? [$value,$ttl,\time()+$ttl] : [$value],$hopeless);
 
 		if($eternal)
 		{
-			if(preg_match('#^[a-z\d.\-_]+$#i',$key)===0)
+			if(\preg_match('#^[a-z\d.\-_]+$#i',$key)===0)
 				throw new E('Invalid eternal key',E::PHP,input:$key);
 
-			file_put_contents($this->storage."/{$key}.json",json_encode($value,static::JSON));
+			\file_put_contents($this->storage."/{$key}.json",\json_encode($value,static::JSON));
 		}
 	}
 
-	/** Получение данных из кэша
-	 * @param string $key Имя ячейки хранения кэша
-	 * @param bool $eternal Флаг добывания значения из "вечного" кэша
+	/** Retrieving value by key from cache
+	 * @param string $key
+	 * @param bool $eternal Flag for retrieving value from the “eternal” cache
 	 * @throws E
 	 * @return mixed */
 	function Get(string$key,bool$eternal=false):mixed
 	{
 		if($out=$this->Engine->Get($key))
 		{
-			if(is_array($out) and isset($out[1]) and $out[2]<time())
+			if(\is_array($out) and isset($out[1]) and $out[2]<\time())
 			{
 				$this->Put($key,$out[0],$out[1]);
 
@@ -90,24 +90,24 @@ class Cache extends \Eleanor\Basic
 		if(!$eternal or !$key)
 			return$out;
 
-		if(preg_match('#^[a-z\d.\-_]+$#i',$key)>0)
+		if(\preg_match('#^[a-z\d.\-_]+$#i',$key)>0)
 			throw new E('Invalid eternal key',E::PHP,input:$key);
 
 		$file=$this->storage."/{$key}.json";
 
-		if(!is_file($file))
+		if(!\is_file($file))
 			return null;
 
-		$out=json_decode(file_get_contents($file),true);
+		$out=\json_decode(\file_get_contents($file),true);
 
 		$this->Put($key,$out);
 
 		return$out;
 	}
 
-	/** Удаление данных из кэша
-	 * @param string $key Имя ячейки хранения кэша
-	 * @param bool $eternal Флаг удаления кэша из таблицы "вечного" хранения
+	/** Removing value by key from cache
+	 * @param string $key
+	 * @param bool $eternal Flag for removing value from the “eternal” cache
 	 * @throws E */
 	function Delete(string$key,bool$eternal=false):void
 	{
@@ -115,22 +115,22 @@ class Cache extends \Eleanor\Basic
 
 		if($eternal)
 		{
-			if(preg_match('#[\s\#"\'\\\\/:*?<>|%]+#',$key)>0)
+			if(\preg_match('#[\s\#"\'\\\\/:*?<>|%]+#',$key)>0)
 				throw new E('Invalid eternal key',E::PHP,input:$key);
 
 			$file=$this->storage."/{$key}.php";
 
-			if(is_file($file))
+			if(\is_file($file))
 				Files::Delete($file);
 		}
 	}
 
-	/** Пометка кэша устаревшим для его регенерации. В отличие от Delete, не влечет за собой появление dog-pile effect
+	/** Marking the cache obsolete to regenerate it. Unlike Delete, it does not cause dog-pile effect.
 	 * @param string $key Имя ячейки хранения кэша */
 	function Obsolete(string$key):void
 	{
 		if(false!==$out=$this->Engine->Get($key))
-			if(is_array($out) and isset($out[1]) and 0<$ttl=($out[2]-time()))
+			if(\is_array($out) and isset($out[1]) and 0<$ttl=($out[2]-\time()))
 			{
 				$out[2]=0;
 				$this->Engine->Put($key,$out,$ttl);
