@@ -66,14 +66,23 @@ class Telegram extends Eleanor\Basic
 	 * @return string */
 	function Request(string$method,array|string$data=''):string
 	{
+		$headers=[];
+
+		if(\is_array($data) and \array_any($data,fn($item)=>!\is_scalar($item)))
+		{
+			$data=\json_encode($data,\JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
+			$headers[]='Content-Type: application/json';
+		}
+
 		\curl_setopt_array($this->curl,[
-			CURLOPT_URL=>$this->base_url.$method,
-			CURLOPT_RETURNTRANSFER=>true,
-			CURLOPT_ENCODING=>'',//https://php.watch/articles/curl-php-accept-encoding-compression
-			CURLOPT_TIMEOUT=>25,
-			CURLOPT_HEADER=>false,
-			CURLOPT_POST=>!!$data,
-			CURLOPT_POSTFIELDS=>$data,
+			\CURLOPT_URL=>$this->base_url.$method,
+			\CURLOPT_RETURNTRANSFER=>true,
+			\CURLOPT_ENCODING=>'',//https://php.watch/articles/curl-php-accept-encoding-compression
+			\CURLOPT_TIMEOUT=>25,
+			\CURLOPT_HEADER=>false,
+			\CURLOPT_POST=>!!$data,
+			\CURLOPT_POSTFIELDS=>$data,
+			\CURLOPT_HTTPHEADER=>$headers
 		]);
 
 		$result=\curl_exec($this->curl);

@@ -5,13 +5,15 @@
 	library@eleanor-cms.com
 */
 namespace Eleanor\Classes\Cache;
-use Eleanor, Eleanor\Classes\E, Eleanor\Classes\Files;
+
+use Eleanor\Classes\E,
+	Eleanor\Classes\Files;
 
 /** Cache based on files with serialized content */
-class Serialize implements Eleanor\Interfaces\Cache
+class Serialize implements \Eleanor\Interfaces\Cache
 {
 	/** @var int The timestamp before which cache files are considered as non obsolete */
-	protected int $threshold=Eleanor\BASE_TIME;
+	protected int $threshold=\Eleanor\BASE_TIME;
 
 	/** @var string Path to folder where cache is stored */
 	readonly string $path;
@@ -20,13 +22,13 @@ class Serialize implements Eleanor\Interfaces\Cache
 	 * @throws E */
 	function __construct(?string$path=null)
 	{
-		$this->path=$path ?? $_SERVER['DOCUMENT_ROOT'].Eleanor\SITEDIR.'cache/';
+		$this->path=$path ?? \rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/cache/';
 
 		if(!\is_dir($this->path))
 			Files::MkDir($this->path);
 
 		if(!\is_writeable($this->path))
-			throw new E('Folder for %cache% is write-protected',E::SYSTEM,null,['destination'=>$this->path]);
+			throw new E('Folder for %cache% is write-protected',E::SYSTEM,null,input:['destination'=>$this->path]);
 	}
 
 	/** Storing key=>value

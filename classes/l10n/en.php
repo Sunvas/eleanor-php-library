@@ -26,22 +26,22 @@ class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 	static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
 	{
 		if(!$d)
-			$d=time();
-		elseif(is_string($d))
-			$d=strtotime($d);
+			$d=\time();
+		elseif(\is_string($d))
+			$d=\strtotime($d);
 
 		if(!$d)
 			return'';
 
 		return match($f){
-			DateFormat::Date=>date('Y-m-d',$d),
-			DateFormat::Time=>date('H:i:s',$d),
-			DateFormat::DateTime=>date('Y-m-d H:i:s',$d),
+			DateFormat::Date=>\date('Y-m-d',$d),
+			DateFormat::Time=>\date('H:i:s',$d),
+			DateFormat::DateTime=>\date('Y-m-d H:i:s',$d),
 			DateFormat::TextDate=>static::TextDate($d,false),
-			DateFormat::TextDateTime=>static::TextDate($d,false).date(' H:i',$d),
-			DateFormat::MonthYear=>date(idate('Y')==idate('Y',$d) ? 'F' : 'F Y',$d),
+			DateFormat::TextDateTime=>static::TextDate($d,false).\date(' H:i',$d),
+			DateFormat::MonthYear=>\date(\idate('Y')==\idate('Y',$d) ? 'F' : 'F Y',$d),
 			DateFormat::HumanDate=>static::TextDate($d),
-			DateFormat::HumanDateTime=>static::TextDate($d).date(' H:i',$d),
+			DateFormat::HumanDateTime=>static::TextDate($d).\date(' H:i',$d),
 		};
 	}
 
@@ -51,8 +51,8 @@ class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 	 * @return string */
 	static function TextDate(int$t,bool$human=true):string
 	{
-		$day=explode(',',date('Y,n,j,t',$t));
-		$now=explode(',',date('Y,n,j,t'));
+		$day=\explode(',',\date('Y,n,j,t',$t));
+		$now=\explode(',',\date('Y,n,j,t'));
 
 		if($human)
 		{
@@ -66,7 +66,7 @@ class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 				return'Tomorrow';
 		}
 
-		//Даты текущего года и даты +- полгода отображаем без года
-		return date($now[0]==$day[0] || abs($now[0]-$day[0])==1 && abs($now[1]-$day[1])<7 ? 'd F' : 'd F Y',$t);
+		//This year, or 3 month of previous
+		return date($now[0]==$day[0] || ($now[0]-$day[0])==1 && $t>=\strtotime('-3month') ? 'd F' : 'd F Y',$t);
 	}
 }

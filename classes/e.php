@@ -5,10 +5,9 @@
 	library@eleanor-cms.com
 */
 namespace Eleanor\Classes;
-use Eleanor;
 
 /** Eleanor's main exception which answers the main question: who is responsible for? */
-class E extends Eleanor\Abstracts\E
+class E extends \Eleanor\Abstracts\E
 {
 	const int
 		/** Error in php code: the responsible person is the one who wrote this code (developer) */
@@ -58,7 +57,7 @@ class E extends Eleanor\Abstracts\E
 	/** Logging */
 	function Log():void
 	{
-		if(!Eleanor\Library::$logs_enabled)
+		if(!\Eleanor\Library::$logs_enabled)
 			return;
 
 		$type=match($this->code){
@@ -70,7 +69,7 @@ class E extends Eleanor\Abstracts\E
 		};
 
 		$this->LogWriter(
-			Eleanor\Library::$logs.$type,
+			\Eleanor\Library::$logs.$type,
 			\md5($this->line.$this->file.$this->code.$this->message)
 		);
 	}
@@ -92,8 +91,14 @@ class E extends Eleanor\Abstracts\E
 
 		$log=$this->message.PHP_EOL;
 
-		if(isset($this->extra['input']))
-			$log.='JSONed input: '.\json_encode($this->extra['input'],JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL;
+		if($this->input)
+		{
+			$input=\json_encode($this->input,JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+			$log.=$input!==false//Not everithing is convertable to JSON
+				? 'JSONed input: '.$input.PHP_EOL
+				: 'Serialized input: '.\serialize($this->input).PHP_EOL;
+		}
 
 		$log.=<<<LOG
 File: {$data['f']}[{$data['l']}]

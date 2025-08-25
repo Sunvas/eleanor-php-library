@@ -25,7 +25,7 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 	 * @return string */
 	static function Translit(string$s):string
 	{
-		return str_replace(
+		return \str_replace(
 			['а','б','в','г','д','е','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ы','ё','ж','ч',
 			 'ш','щ','э','ю','я','ъ','ь','А','Б','В','Г','Д','Е','З','И','Й','К','Л','М','Н','О','П','Р','С','Т','У',
 			 'Ф','Х','Ц','Ы','Ё','Ж','Ч','Ш','Щ','Э','Ю','Я','Ъ','Ь'],
@@ -44,22 +44,22 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 	static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
 	{
 		if(!$d)
-			$d=time();
-		elseif(is_string($d))
-			$d=strtotime($d);
+			$d=\time();
+		elseif(\is_string($d))
+			$d=\strtotime($d);
 
 		if(!$d)
 			return'';
 
 		return match($f){
-			DateFormat::Date=>date('Y-m-d',$d),
-			DateFormat::Time=>date('H:i:s',$d),
-			DateFormat::DateTime=>date('Y-m-d H:i:s',$d),
+			DateFormat::Date=>\date('Y-m-d',$d),
+			DateFormat::Time=>\date('H:i:s',$d),
+			DateFormat::DateTime=>\date('Y-m-d H:i:s',$d),
 			DateFormat::TextDate=>static::DateText($d,false),
-			DateFormat::TextDateTime=>static::DateText($d,false).date(' H:i',$d),
+			DateFormat::TextDateTime=>static::DateText($d,false).\date(' H:i',$d),
 			DateFormat::MonthYear=>static::MonthYear($d),
 			DateFormat::HumanDate=>static::DateText($d),
-			DateFormat::HumanDateTime=>static::DateText($d).date(' H:i',$d),
+			DateFormat::HumanDateTime=>static::DateText($d).\date(' H:i',$d),
 		};
 	}
 
@@ -68,9 +68,9 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 	 * @return string */
 	static function MonthYear(int$t):string
 	{
-		$y=idate('Y',$t);
+		$y=\idate('Y',$t);
 
-		return match(idate('m',$t)){
+		return match(\idate('m',$t)){
 			1=>'Январь',
 			2=>'Февраль',
 			3=>'Март',
@@ -83,7 +83,7 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 			10=>'Октябрь',
 			11=>'Ноябрь',
 			12=>'Декабрь',
-		}.(idate('Y')==$y ? '' : ' '.$y);
+		}.(\idate('Y')==$y ? '' : ' '.$y);
 	}
 
 	/** Человеческое представление даты
@@ -92,8 +92,8 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 	 * @return string */
 	static function DateText(int$t,bool$human=true):string
 	{
-		$day=array_map('intval',explode(',',date('Y,n,j,t',$t)));
-		$now=array_map('intval',explode(',',date('Y,n,j,t')));
+		$day=\array_map('intval',\explode(',',\date('Y,n,j,t',$t)));
+		$now=\array_map('intval',\explode(',',\date('Y,n,j,t')));
 
 		if($human)
 		{
@@ -111,8 +111,8 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 				return'Завтра';
 		}
 
-		//Даты текущего года и даты +- полгода отображаем без года
-		return sprintf($day[0]==$now[0] || abs($now[0]-$day[0])==1 && abs($now[1]-$day[1])<7 ? '%02d %s' : '%02d %s %d',$day[2],match($day[1]){
+		//This year, or 3 month of previous
+		return \sprintf($now[0]==$day[0] || ($now[0]-$day[0])==1 && $t>=\strtotime('-3month') ? '%02d %s' : '%02d %s %d',$day[2],match($day[1]){
 				1=>'января',
 				2=>'февраля',
 				3=>'марта',

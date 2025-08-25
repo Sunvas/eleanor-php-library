@@ -26,13 +26,13 @@ class Cache extends \Eleanor\Basic
 		$cachedir=__DIR__.'/cache/';
 
 		if(\class_exists('\\Memcache',false) and \is_file($cachedir.'memcache.php'))
-			$this->Engine=new \Eleanor\Classes\Cache\MemCache(\crc32(__DIR__));
+			$this->Engine=new Cache\MemCache(\crc32(__DIR__));
 		elseif(\class_exists('\\Memcached',false) and \is_file($cachedir.'memcached.php'))
-			$this->Engine=new \Eleanor\Classes\Cache\MemCached(\crc32(__DIR__));
+			$this->Engine=new Cache\MemCached(\crc32(__DIR__));
 		else
-			$this->Engine=new \Eleanor\Classes\Cache\Serialize($path);
+			$this->Engine=new Cache\Serialize($path);
 
-		$this->storage=$storage ? \rtrim($storage,'/\\') : $_SERVER['DOCUMENT_ROOT'].\Eleanor\SITEDIR.'cache/storage';
+		$this->storage=$storage ? \rtrim($storage,'/\\') : \rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/cache/storage';
 
 		if(!\is_dir($this->storage))
 			Files::MkDir($this->storage);
@@ -90,8 +90,8 @@ class Cache extends \Eleanor\Basic
 		if(!$eternal or !$key)
 			return$out;
 
-		if(\preg_match('#^[a-z\d.\-_]+$#i',$key)>0)
-			throw new E('Invalid eternal key',E::PHP,input:$key);
+		if(\preg_match('#[^a-z\d.\-_]+#i',$key,$m)>0)
+			throw new E('Invalid eternal key',E::PHP,input:['key'=>$key,'wrong'=>$m[0]]);
 
 		$file=$this->storage."/{$key}.json";
 

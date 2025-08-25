@@ -1,6 +1,6 @@
 ### English
-Place for enums. Autoload is supported only for namespace Eleanor\Enums. Filenames should be written in lowercase. Each file should return string of full enum name.
+Place for PHP enums. Autoload is supported only for namespace Eleanor\Enums. Filenames should be written in lowercase, CamelCaseEnum should be placed into same name kebab-style-filenames. Namespace and classname doesn't matter (only filename is taken into account) and each file should return string of full enum name.
 
 ---
 ### Русский
-Здесь место для перечислений. Автозагрузка доступна только для пространства имён Eleanor\Enums. Имена файлов должны быть написаны в нижнем регистре. Каждый файл должен возвращать строку с полным именем перечисления.
+Здесь место для PHP перечислений. Автозагрузка доступна только для пространства имён Eleanor\Enums. Имена файлов должны быть написаны в нижнем регистре, CamelCaseEnum должны быть помещены в одноимённые kebab-style-filenames файлов. Пространство имен и имя класса не имеют значения (учитывается только имя файла), и каждый файл должен возвращать строку с полным именем перечисления.

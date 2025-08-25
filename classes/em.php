@@ -39,7 +39,7 @@ class EM extends Eleanor\Abstracts\E
 		parent::__construct($message,$code,$previous);
 	}
 
-	/** For BSOD*/
+	/** For BSOD */
 	function __toString():string
 	{
 		$l10n=new L10n('em');

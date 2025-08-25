@@ -78,13 +78,8 @@ enum Template_Type
 	 * @return ?string */
 	private function Object(string$n,array$p,object$O):?string
 	{
-		$o=[$O,$n];
-
-		//Supporting of explicit methods and __call
-		if(\method_exists($O,$n) or \is_callable($o))
-			return \call_user_func_array($o,$p);
-
-		return null;
+		//Support only explicit methods
+		return \method_exists($O,$n) ? \call_user_func_array([$O,$n],$p) : null;
 	}
 }
 
@@ -121,10 +116,10 @@ class Template extends \Eleanor\Abstracts\Append
 
 	/** Templates source
 	 * @param string $n Template name
-	 * @param array $p List of variables
-	 * @throws E
-	 * @return string */
-	protected function _(string$n,array$p=[]):string
+	 * @param array $a Arguments
+	 * @return string
+	 * @throws E */
+	protected function _(string$n,array$a=[]):string
 	{
 		while($this->queue)
 		{
@@ -141,7 +136,7 @@ class Template extends \Eleanor\Abstracts\Append
 			#Templates based on directory: there are files inside it
 			elseif(\is_dir($item))
 			{
-				$found=\glob(\rtrim($item,'/\\').DIRECTORY_SEPARATOR.'*'.static::EXT);
+				$found=\glob(\rtrim($item,'/\\').\DIRECTORY_SEPARATOR.'*'.static::EXT);
 				$files=[];
 
 				if($found)
@@ -166,13 +161,13 @@ class Template extends \Eleanor\Abstracts\Append
 			}
 		}
 
-		#For the template on directory, the only parameter passed as an array is unloaded as variables
-		$extract=isset($p[0]) && \count($p)==1 && \is_array($p[0]);
+		#For the template on directory, the only parameter passed as an array is extracted as variables. This allows to pass &links.
+		$extract=isset($a[0]) && \count($a)==1 && \is_array($a[0]);
 
 		#Searching for the template
 		foreach($this->loaded as [$Type,$item])
 		{
-			$result=$Type->Get($n,$extract && $Type===Template_Type::dir ? $p[0]+$this->default : $p+$this->default,$item);
+			$result=$Type->Get($n,$extract && $Type===Template_Type::dir ? $a[0]+$this->default : $a+$this->default,$item);
 
 			if(null!==$result)
 				return$result;

@@ -68,7 +68,7 @@ class Uri extends Eleanor\Basic
 		foreach($slugs as $v)
 			$r[]=\is_int($v) ? $v : \urlencode((string)$v);
 
-		return \join('/',$r).$ending.($q ? static::Query($q) : '');
+		return \join('/',$r).($r ? $ending : '').($q ? static::Query($q) : '');
 	}
 
 	/** Query generator

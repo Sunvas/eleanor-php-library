@@ -27,7 +27,7 @@ class Files extends Eleanor\Basic
 
 		$dest_dir=\dirname($destination);
 		static::MkDir($dest_dir);
-		$destination=\realpath($dest_dir).DIRECTORY_SEPARATOR.\basename($destination);
+		$destination=\realpath($dest_dir).\DIRECTORY_SEPARATOR.\basename($destination);
 
 		if(\is_link($source) or Eleanor\W and \readlink($source)!=$source)
 			return \symlink(\readlink($source),$destination);
@@ -38,7 +38,7 @@ class Files extends Eleanor\Basic
 		$files=\array_diff(\scandir($source),['.','..']);
 
 		foreach($files as $entry)
-			static::Copy($source.DIRECTORY_SEPARATOR.$entry,$destination.DIRECTORY_SEPARATOR.$entry,$orig_dest);
+			static::Copy($source.\DIRECTORY_SEPARATOR.$entry,$destination.\DIRECTORY_SEPARATOR.$entry,$orig_dest);
 
 		return true;
 	}
@@ -50,7 +50,7 @@ class Files extends Eleanor\Basic
 	{
 		if($path!='' and !\is_dir($path))
 		{
-			static::MkDir(d\irname($path));
+			static::MkDir(\dirname($path));
 			return \mkdir($path);
 		}
 
@@ -67,13 +67,13 @@ class Files extends Eleanor\Basic
 		if(\is_dir($path))
 		{
 			$entries=\array_diff(\scandir($path),['.','..']);
-			$empty=array_all($entries,fn($entry)=>static::Delete($path.DIRECTORY_SEPARATOR.$entry));
+			$empty=\array_all($entries,fn($entry)=>static::Delete($path.\DIRECTORY_SEPARATOR.$entry));
 
-			return $empty && rmdir($path);
+			return $empty && \rmdir($path);
 		}
 
 		#Is symlinks is broken, file_exists can't identify it
-		return (is_link($path) || file_exists($path)) && unlink($path);
+		return (\is_link($path) || \file_exists($path)) && \unlink($path);
 	}
 
 	/** Ideological copy of \substr_replace, but for files.
@@ -86,23 +86,23 @@ class Files extends Eleanor\Basic
 	 * @return int|null Difference in bytes or NULL if $stream is not a resource or $length===0 and $string==='' */
 	static function FReplace($stream,string$replace,int$offset,int$length=0,int$buf=4096):?int
 	{
-		$len=strlen($replace);
+		$len=\strlen($replace);
 
-		if(!is_resource($stream) or $len==0 and $length==0)
+		if(!\is_resource($stream) or $len==0 and $length==0)
 			return null;
 
-		$size=fstat($stream)['size'];
+		$size=\fstat($stream)['size'];
 		$diff=$len-$length;
 
 		if($diff==0 and $offset<$size)
 		{
-			fseek($stream,$offset);
-			fwrite($stream,$replace);
+			\fseek($stream,$offset);
+			\fwrite($stream,$replace);
 		}
 		elseif($offset>=$size)
 		{
-			fseek($stream,0,SEEK_END);
-			fwrite($stream,$replace);
+			\fseek($stream,0,SEEK_END);
+			\fwrite($stream,$replace);
 		}
 		else
 		{
@@ -115,33 +115,33 @@ class Files extends Eleanor\Basic
 				do
 				{
 					#Понемногу перемещаем содержимое файла, расширяя зону вставки
-					$i=max($size-$buf*$step++,$limiter);
+					$i=\max($size-$buf*$step++,$limiter);
 
-					fseek($stream,$i);
-					$data=fread($stream,$buf);
+					\fseek($stream,$i);
+					$data=\fread($stream,$buf);
 
-					fseek($stream,$i+$diff);
-					fwrite($stream,$data);
+					\fseek($stream,$i+$diff);
+					\fwrite($stream,$data);
 				}while($i>$limiter);
 			}
 			else
 			{
 				for($i=$offset+$length; $i<$size; $i+=$buf)
 				{
-					fseek($stream,$i);
+					\fseek($stream,$i);
 
-					$data=fread($stream,min($buf,$size-$i));
-					fseek($stream,$i+$diff);
-					fwrite($stream,$data);
+					$data=\fread($stream,\min($buf,$size-$i));
+					\fseek($stream,$i+$diff);
+					\fwrite($stream,$data);
 				}
 
-				ftruncate($stream,$size+$diff);
+				\ftruncate($stream,$size+$diff);
 			}
 
 			if($len>0)
 			{
-				fseek($stream,$offset);
-				fwrite($stream,$replace);
+				\fseek($stream,$offset);
+				\fwrite($stream,$replace);
 			}
 		}
 

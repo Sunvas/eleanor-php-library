@@ -5,6 +5,7 @@
 	library@eleanor-cms.com
 */
 namespace Eleanor;
+
 use Eleanor\Classes\E,
 	Eleanor\Classes\Output,
 	Eleanor\Traits\FL4E;
@@ -47,20 +48,39 @@ function BugFileLine(null|string|object$filter=null):array
 		$found=[];
 
 		foreach(\array_slice($db,1) as $item)
-			if(isset($item['object']) and $item['object']::class===$filter::class)
-				$found=[
-					'file'=>$item['file'],
-					'line'=>$item['line'],
-				];
-			elseif($found)
+		{
+			if(isset($item['object']))
+			{
+				#Extracting classname from protected link property of Assign class
+				if($item['object']::class===Assign::class)
+				{
+					$F=(function(){ return $this->link; })
+						->bindTo($item['object'],$item['object']);
+					$cmp=($F())::class;
+				}
+				else
+					$cmp=$item['object']::class;
+
+				if($cmp===$filter::class)
+				{
+					$found=[
+						'file'=>$item['file'],
+						'line'=>$item['line'],
+					];
+					continue;
+				}
+			}
+
+			if($found)
 				break;
+		}
 
 		return$found;
 	}
 
 	#The first non-mention
 	foreach(\array_slice($db,1) as $item)
-		if(!isset($item['class']) or $item['class']!=$filter)
+		if(($item['class'] ?? '')!=$filter and ($item['function'] ?? '')!=$filter)
 			return[
 				'file'=>$item['file'],
 				'line'=>$item['line'],
@@ -79,6 +99,9 @@ function AwareInclude(string$file,array$vars=[]):mixed
 	if(!\is_file($file))
 		throw new E('Missing file '.(\str_starts_with($file,SITEDIR) ? \substr($file,\strlen(SITEDIR)) : $file),E::SYSTEM);
 
+	//Preserving $file variable
+	${''}=$file;
+
 	if($vars)
 		\extract($vars,EXTR_PREFIX_INVALID|EXTR_OVERWRITE|EXTR_REFS,'var');
 
@@ -86,7 +109,7 @@ function AwareInclude(string$file,array$vars=[]):mixed
 
 	try
 	{
-		$r=include \func_get_arg(0);
+		$r=include ${''};
 		\ob_end_flush();
 	}
 	catch(\Throwable$E)
@@ -140,6 +163,65 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 
 	die($out);
 }
+
+/** Class autoloader
+ * @param string $c Classname
+ * @param string $dir Working directoryu
+ * @param string $ns NameSpace as filter
+ * @throws E */
+function Autoloader(string$c,string$dir=__DIR__,string$ns=__NAMESPACE__):void
+{
+	if(!\str_starts_with($c,$ns.'\\'))
+		return;
+
+	$dest=\substr($c,\strlen($ns));
+	$dest=\strtr($dest,'\\','/').'.php';
+
+	#LowerCase
+	$lc=\strtolower($dest);
+
+	$path=$dir.$lc;
+	$exists=\is_file($path);
+
+	#Support of kebab-case filenames
+	if(!$exists)
+	{
+		$count=0;
+		$kebab=\preg_replace('#([a-z])([A-Z])#','\\1-\\2',$dest,count:$count);
+
+		if($count>0)
+		{
+			$path=$dir.\strtolower($kebab);
+			$exists=\is_file($path);
+		}
+	}
+
+	if($exists)
+	{
+		$r=(fn()=>require$path)();
+
+		#Trying to make the class available from namespace.
+		if(\class_exists($c,false) or (\is_string($r) and \class_exists($r,false) and \class_alias($r,$c,false)))
+			return;
+	}
+
+	if(!$exists or !\class_exists($c,false) and !\interface_exists($c,false) and !\trait_exists($c,false) and !\enum_exists($c,false))
+	{
+		$what=match(\strstr(\ltrim($lc,'\\'), '\\', true)){
+			'enums'=>'Enum',
+			'traits'=>'Trait',
+			'interfaces'=>'Interface',
+			'abstracts'=>'Abstract class',
+			default=>'Class'
+		};
+
+		if(\class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php'))
+			throw new E($what.' not found: '.$c,E::PHP,...BugFileLine(__NAMESPACE__.'\Autoloader'));
+	}
+}
+
+#Autoloader loads only files directly related to Eleanor PHP Library
+\spl_autoload_register(Autoloader(...));
 
 /** Basic class from which all others classes are recommended to be extended: it contains the necessary hooks that make
  * it easier to find and fix bugs */
@@ -231,10 +313,17 @@ class Assign extends Basic
 		$link=new static($link,$Creator);
 	}
 
-	function __get(string$n):mixed
+	function &__get(string$n):mixed
 	{
 		$this->Create();
-		return$this->link->$n;
+
+		try{
+			$link=&$this->link->$n;
+		}catch(\Error){
+			$link=$this->link->$n;
+		}
+
+		return$link;
 	}
 
 	function __call(string$n,array$a):mixed
@@ -301,7 +390,7 @@ class Library extends Basic
 	/** One-time creation of an object according to a predefined constructor
 	 * @param string $n Имя класса
 	 * @throws E */
-	function __invoke(string$n):mixed
+	function __invoke(string$n,string$dir=__DIR__):mixed
 	{
 		$creator=[];
 
@@ -314,12 +403,26 @@ class Library extends Basic
 				return \call_user_func($creator[0]);
 		}
 
-		$lcc=\strtolower($n);#LowerCase class
-		$path=__DIR__."/classes/{$lcc}.php";
+		$lc=\strtolower($n);#LowerCase
+		$path=$dir."/classes/{$lc}.php";
+		$exists=\is_file($path);
 
-		if(\is_file($path))
+		#Support of kebab-case filenames
+		if(!$exists)
 		{
-			$class=require$path;
+			$count=0;
+			$kebab=\preg_replace('#([a-z])([A-Z])#','\\1-\\2',$n,count:$count);
+
+			if($count>0)
+			{
+				$path=$dir.'/classes/'.\strtolower($kebab).'.php';
+				$exists=\is_file($path);
+			}
+		}
+
+		if($exists)
+		{
+			$class=(fn()=>require$path)();
 
 			if(\class_exists($class,false))
 				return new $class($creator);
@@ -330,10 +433,10 @@ class Library extends Basic
 }
 
 #By default, all logs are stored in the ./log folder of the site. It is better to deny access to this folder.
-Library::$logs=$_SERVER['DOCUMENT_ROOT'].SITEDIR.'logs/';
+Library::$logs=\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/logs/';
 
 #Filter receives path to file with error/exception as first parameter and allows or disallows logging.
-Library::$log_filter=fn($f)=>\str_starts_with($f,__DIR__.DIRECTORY_SEPARATOR) || \str_starts_with($f,$_SERVER['DOCUMENT_ROOT'].SITEDIR);
+Library::$log_filter=fn($f)=>\str_starts_with($f,__DIR__.\DIRECTORY_SEPARATOR) || \str_starts_with($f,\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR);
 
 Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context=null){
 	if(!Library::$log_all_errors and !\call_user_func(Library::$log_filter,$f,$c))
@@ -388,42 +491,6 @@ Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E){
 	}
 
 	BSOD($m,$c,$f,$l,\property_exists($E,'hint') ? $E->hint : null,\property_exists($E,'input') ? $E->input : null);
-});
-
-#Implementing autoloader: it will only load what is directly related to Eleanor PHP Library
-\spl_autoload_register(function(string$c){
-	if(!\str_starts_with($c,__NAMESPACE__.'\\'))
-		return;
-
-	#LowerCase class
-	$lcc=\substr($c,\strlen(__NAMESPACE__));
-	$lcc=\strtolower($lcc);
-
-	$path=__DIR__.DIRECTORY_SEPARATOR.\strtr($lcc,'\\',DIRECTORY_SEPARATOR).'.php';
-	$exists=\is_file($path);
-
-	if($exists)
-	{
-		$r=require$path;
-
-		#Trying to make the class available from \Eleanor.
-		if(\class_exists($c,false) or (\is_string($r) and \class_exists($r,false) and \class_alias($r,$c,false)))
-			return;
-	}
-
-	if(!$exists or !\class_exists($c,false) and !\interface_exists($c,false) and !\trait_exists($c,false) and !\enum_exists($c,false))
-	{
-		$what=match(\strstr($lcc, '\\', true)){
-			'enums'=>'Enum',
-			'traits'=>'Trait',
-			'interfaces'=>'Interface',
-			'abstracts'=>'Abstract class',
-			default=>'Class'
-		};
-
-		if(\class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php'))
-			throw new E($what.' not found: '.$c,E::PHP,...BugFileLine());
-	}
 });
 
 #Поддержка IDN
