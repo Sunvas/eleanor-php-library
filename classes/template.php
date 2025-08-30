@@ -164,10 +164,13 @@ class Template extends \Eleanor\Abstracts\Append
 		#For the template on directory, the only parameter passed as an array is extracted as variables. This allows to pass &links.
 		$extract=isset($a[0]) && \count($a)==1 && \is_array($a[0]);
 
+		#If templates are not appended, flush storage to content
+		$flush=$this->append ? [] : ['content'=>$this->storage];
+
 		#Searching for the template
 		foreach($this->loaded as [$Type,$item])
 		{
-			$result=$Type->Get($n,$extract && $Type===Template_Type::dir ? $a[0]+$this->default : $a+$this->default,$item);
+			$result=$Type->Get($n,$extract && $Type===Template_Type::dir ? $flush+$a[0]+$this->default : $flush+$a+$this->default,$item);
 
 			if(null!==$result)
 				return$result;

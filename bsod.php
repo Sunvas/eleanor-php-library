@@ -46,7 +46,7 @@ TEXT;
 	 * @param ?string $hint Подсказка для исправления
 	 * @param ?array $payload данные, которые привели к сбою */
 	'json'=>function($error,$code,$file,$line,$hint,$payload){
-		$data=['ok'=>false]+compact('error','code','file','line','hint','payload');
+		$data=['ok'=>false]+\compact('error','code','file','line','hint','payload');
 
 		return json_encode($data,JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	},

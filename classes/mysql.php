@@ -36,7 +36,7 @@ class MySQL extends Eleanor\Basic
 		$M=Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
-			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno,params:compact('host','user','pass','db','port','socket'));
+			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno,params:\compact('host','user','pass','db','port','socket'));
 
 		$M->autocommit(true);
 		$M->set_charset($charset);

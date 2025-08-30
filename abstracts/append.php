@@ -81,7 +81,7 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 			$this->storage.=$this->_($n,$a);
 		else
 		{
-			$this->storage=$this->_($n,['content'=>$this->storage]+$a);
+			$this->storage=$this->_($n,$a);
 			$this->append=true;
 		}
 
