@@ -1,93 +1,53 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes\Cache;
 
-use Eleanor\Classes\E,
-	Eleanor\Classes\Files;
+use Eleanor\Classes\E;
 
 /** Cache based on files with serialized content */
 class Serialize implements \Eleanor\Interfaces\Cache
 {
-	/** @var int The timestamp before which cache files are considered as non obsolete */
-	protected int $threshold=\Eleanor\BASE_TIME;
+	/** @param ?string $path Path to folder where cache files will be stored, without trailing slash */
+	function __construct(readonly ?string$path=null){}
 
-	/** @var string Path to folder where cache is stored */
-	readonly string $path;
-
-	/** @param ?string $path Path to folder where cache is stored
-	 * @throws E */
-	function __construct(?string$path=null)
-	{
-		$this->path=$path ?? \rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/cache/';
-
-		if(!\is_dir($this->path))
-			Files::MkDir($this->path);
-
-		if(!\is_writeable($this->path))
-			throw new E('Folder for %cache% is write-protected',E::SYSTEM,null,input:['destination'=>$this->path]);
-	}
-
-	/** Storing key=>value
-	 * @param string $k Key. It is recommended to specify key as a concatenating of tags like tag1_tag2...
+	/** Storing value
+	 * @param string $k Key
 	 * @param mixed $v Value
 	 * @param int $ttl Time To Live in seconds */
-	function Put(string$k,mixed$v,int$ttl=0):void
+	function Put(string$k,mixed$v,int$ttl=86400):void
 	{
-		$f=$this->path.$k.'.s';
+		$f=$this->path."/{$k}.s";
 
-		\file_put_contents($f,\serialize($v));
-		\touch($f,$ttl>0 ? $ttl+\time() : $this->threshold);
+		\file_put_contents($f,\is_string($v) ? $v.' ' : \serialize($v));
+		\touch($f,$ttl+\time());
 	}
 
-	/** Retrieving value by key
+	/** Retrieving value
 	 * @param string $k Key
 	 * @return mixed */
 	function Get(string$k):mixed
 	{
-		$f=$this->path.$k.'.s';
+		$f=$this->path."/{$k}.s";
 
 		if(!\is_file($f))
 			return null;
 
-		$m=\filemtime($f);
-
-		if($m>$this->threshold && $m<\time())
+		if(\filemtime($f)<\time())
 		{
 			$this->Delete($k);
 			return null;
 		}
 
-		return \unserialize(\file_get_contents($f));
+		$s=\file_get_contents($f);
+
+		return \str_ends_with($s,' ') ? \substr($s,0,-1) : \unserialize($s);
 	}
 
-	/** Removing value by key
-	 * @param string $k Ключ */
+	/** Removing value
+	 * @param string $k key */
 	function Delete(string$k):void
 	{
-		Files::Delete($this->path.$k.'.s');
-		\clearstatcache();
-	}
-
-	/** Removing value by tag, if key is empty - all cache will be erased
-	 * @param string $tag Tag */
-	function DeleteByTag(string$tag):void
-	{
-		$tag=\str_replace('..','',$tag);
-
-		if($tag!='')
-			$tag.='*';
-
-		$files=\glob($this->path."*{$tag}.s");
-
-		if($files)
-			foreach($files as $f)
-				Files::Delete($f);
-
-		\clearstatcache();
+		\unlink($this->path."/{$k}.s");
 	}
 }
 

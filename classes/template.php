@@ -1,11 +1,10 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use function Eleanor\BugFileLine;
+
+use function
+	Eleanor\BugFileLine,
+	Eleanor\AwareInclude;
 
 /** Template loader */
 enum Template_Type
@@ -29,18 +28,20 @@ enum Template_Type
 	/** Templates based on a directory with files
 	 * @param string $n Template name
 	 * @param array $p List of variables
+	 * @param string $ext Extension of file
+	 * @param string $path Path to files
 	 * @param array $files List of files
 	 * @return ?string */
-	private function Dir(string$n,array$p,array$files):?string
+	private function Dir(string$n,array$p,string$ext,string$path,array$files):?string
 	{
-		if(!isset($files[$n]))
+		if(!\in_array($n,$files))
 			return null;
 
 		try
 		{
 			\ob_start();
 
-			$content=\Eleanor\AwareInclude($files[$n],$p);
+			$content=AwareInclude($path.\DIRECTORY_SEPARATOR.$n.$ext,$p);
 
 			if($content===null)
 				return null;
@@ -86,7 +87,7 @@ enum Template_Type
 /** Шаблонизатор */
 class Template extends \Eleanor\Abstracts\Append
 {
-	/** Extension of processed files */
+	/** Extension of processed files, must start with . */
 	const string EXT='.php';
 
 	public array
@@ -136,22 +137,21 @@ class Template extends \Eleanor\Abstracts\Append
 			#Templates based on directory: there are files inside it
 			elseif(\is_dir($item))
 			{
-				$found=\glob(\rtrim($item,'/\\').\DIRECTORY_SEPARATOR.'*'.static::EXT);
 				$files=[];
 
-				if($found)
-					foreach($found as $file)
-						$files[ \basename($file,static::EXT) ]=$file;
+				foreach(\scandir($item) as $f)
+					if(\str_ends_with($f,static::EXT))
+						$files[]=\strrchr($f,'.',true);
 
 				if($files)
-					$this->loaded[]=[Template_Type::dir,$files];
+					$this->loaded[]=[Template_Type::dir,[\rtrim($item,'/\\'),$files]];
 			}
 
 			#Templates on file: either object or array
 			elseif(\is_file($item))
 			{
 				\ob_start();
-				$content=\Eleanor\AwareInclude($item);
+				$content=AwareInclude($item);
 				\ob_end_clean();
 
 				if(\is_array($content))
@@ -170,7 +170,10 @@ class Template extends \Eleanor\Abstracts\Append
 		#Searching for the template
 		foreach($this->loaded as [$Type,$item])
 		{
-			$result=$Type->Get($n,$extract && $Type===Template_Type::dir ? $flush+$a[0]+$this->default : $flush+$a+$this->default,$item);
+			if($Type===Template_Type::dir)
+				$result=$Type->Get($n,$flush+($extract ? $a[0] : $a)+$this->default,static::EXT,...$item);
+			else
+				$result=$Type->Get($n,$flush+$a+$this->default,$item);
 
 			if(null!==$result)
 				return$result;
@@ -180,4 +183,5 @@ class Template extends \Eleanor\Abstracts\Append
 	}
 }
 
+#Not necessary here, since class name equals filename
 return Template::class;

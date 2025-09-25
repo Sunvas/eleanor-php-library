@@ -1,9 +1,5 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Enums;
 
 enum DateFormat:string {
@@ -17,4 +13,5 @@ enum DateFormat:string {
 	case HumanDateTime='hdt';
 }
 
+#Not necessary here, since enum name equals filename
 return DateFormat::class;

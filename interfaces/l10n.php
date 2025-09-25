@@ -1,10 +1,7 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Interfaces;
+
 use Eleanor\Enums\DateFormat;
 
 /** Necessary methods for L10n classes */
@@ -17,4 +14,5 @@ interface L10n
 	static function Date(int|string$d,DateFormat$t):string;
 }
 
+#Not necessary here, since interface name equals filename
 return L10n::class;

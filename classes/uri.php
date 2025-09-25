@@ -1,14 +1,9 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor;
 
 /** Relative URI generator */
-class Uri extends Eleanor\Basic
+class Uri extends \Eleanor\Basic
 {
 	/** @static Current URI (from browser's address bar) */
 	static string $current;
@@ -38,7 +33,7 @@ class Uri extends Eleanor\Basic
 		{
 			$uri=$_SERVER['URI'];
 
-			return \urldecode(\substr($uri,\strlen(Eleanor\SITEDIR)));
+			return \urldecode(\substr($uri,\strlen(\Eleanor\SITEDIR)));
 		}
 
 		$uri=$_SERVER['REQUEST_URI'];
@@ -113,6 +108,7 @@ class Uri extends Eleanor\Basic
 	}
 }
 
-Uri::$current=\substr($_SERVER['REQUEST_URI'],\strlen(Eleanor\SITEDIR));
+Uri::$current=\substr($_SERVER['REQUEST_URI'],\strlen(\Eleanor\SITEDIR));
 
+#Not necessary here, since class name equals filename
 return Uri::class;

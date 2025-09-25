@@ -1,14 +1,9 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor;
 
 /** Collection of functions for working with files */
-class Files extends Eleanor\Basic
+class Files extends \Eleanor\Basic
 {
 	/** Making copy of file/directory
 	 * @param string $source
@@ -29,7 +24,7 @@ class Files extends Eleanor\Basic
 		static::MkDir($dest_dir);
 		$destination=\realpath($dest_dir).\DIRECTORY_SEPARATOR.\basename($destination);
 
-		if(\is_link($source) or Eleanor\W and \readlink($source)!=$source)
+		if(\is_link($source))
 			return \symlink(\readlink($source),$destination);
 
 		if(\is_file($source))
@@ -39,20 +34,6 @@ class Files extends Eleanor\Basic
 
 		foreach($files as $entry)
 			static::Copy($source.\DIRECTORY_SEPARATOR.$entry,$destination.\DIRECTORY_SEPARATOR.$entry,$orig_dest);
-
-		return true;
-	}
-
-	/** Recursive folder creation
-	 * @param string $path
-	 * @return bool */
-	static function MkDir(string$path):bool
-	{
-		if($path!='' and !\is_dir($path))
-		{
-			static::MkDir(\dirname($path));
-			return \mkdir($path);
-		}
 
 		return true;
 	}
@@ -149,4 +130,5 @@ class Files extends Eleanor\Basic
 	}
 }
 
+#Not necessary here, since class name equals filename
 return Files::class;

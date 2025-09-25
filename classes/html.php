@@ -1,14 +1,9 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor;
 
 /** Generating of html primitives */
-class Html extends Eleanor\Basic
+class Html extends \Eleanor\Basic
 {
 	/** @const ENT Compilation of ENT_* constants */
 	const int ENT=ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE | ENT_DISALLOWED;
@@ -48,7 +43,7 @@ class Html extends Eleanor\Basic
 	 *  3 bit disables applying of double encode in htmlspecialchars
 	 * @param string $charset Кодировка
 	 * @return string */
-	static function ParamValue(\Closure|string$s,int$mode=0b11,string$charset=Eleanor\CHARSET):string
+	static function ParamValue(\Closure|string$s,int$mode=0b11,string$charset=\Eleanor\CHARSET):string
 	{
 		if($s instanceof \Closure)
 			return \call_user_func($s);
@@ -216,4 +211,5 @@ class Html extends Eleanor\Basic
 	}
 }
 
+#Not necessary here, since class name equals filename
 return Html::class;

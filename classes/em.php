@@ -1,14 +1,9 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor;
 
 /** Special exception for MySQL */
-class EM extends Eleanor\Abstracts\E
+class EM extends \Eleanor\Abstracts\E
 {
 	const int
 		/** Connection issue */
@@ -63,7 +58,7 @@ class EM extends Eleanor\Abstracts\E
 		};
 
 		$this->LogWriter(
-			Eleanor\Library::$logs.$type,
+			\Eleanor\Library::$logs.$type,
 			\md5($this->line.$this->file.$this->code),
 		);
 	}
@@ -144,4 +139,5 @@ LOG;
 	}
 }
 
+#Not necessary here, since class name equals filename
 return EM::class;

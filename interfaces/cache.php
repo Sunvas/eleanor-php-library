@@ -1,9 +1,5 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Interfaces;
 
 /** Interface for cache engines */
@@ -23,10 +19,7 @@ interface Cache
 	/** Removing value by key
 	 * @param string $k Ключ */
 	function Delete(string$k):void;
-
-	/** Removing value by tag, if key is empty - all cache will be erased
-	 * @param string $tag Tag */
-	function DeleteByTag(string$tag):void;
 }
 
+#Not necessary here, since interface name equals filename
 return Cache::class;

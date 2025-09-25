@@ -1,9 +1,5 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Abstracts;
 use Eleanor;
 
@@ -94,4 +90,5 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 	abstract protected function _(string$n,array$a):string;
 }
 
+#Not necessary here, since class name equals filename
 return Append::class;

@@ -1,9 +1,5 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes\L10n;
 use Eleanor\Enums\DateFormat;
 
@@ -51,22 +47,24 @@ class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 	 * @return string */
 	static function TextDate(int$t,bool$human=true):string
 	{
-		$day=\explode(',',\date('Y,n,j,t',$t));
+		$date=\explode(',',\date('Y,n,j,t',$t));
 		$now=\explode(',',\date('Y,n,j,t'));
 
 		if($human)
 		{
-			if($day[2]==$now[2] and $day[1]==$now[1] and $day[0]==$now[0])
+			if($date[2]==$now[2] and $date[1]==$now[1] and $date[0]==$now[0])
 				return'Today';
 
-			if($day[2]+1==$now[2] and $now[0]==$day[0] and $now[1]==$day[1] or $day[1]+1==$now[1] and $now[0]==$day[0] and $now[2]==1 and $day[3]==$day[2] or $day[0]+1==$now[0] and $now[2]==1 and $now[1]==1 and $day[3]==$day[2])
+			if($now[0]==$date[0] and $now[1]==$date[1] and $date[2]+1==$now[2] or //Same year and month
+				$now[2]==1 and $date[3]==$date[2] and ($now[0]==$date[0] and $date[1]+1==$now[1] or $date[0]+1==$now[0] and $now[1]==1))//Today is the first day of the month
 				return'Yesterday';
 
-			if($day[2]-1==$now[2] and $now[0]==$day[0] and $now[1]==$day[1] or $day[1]-1==$now[1] and $now[0]==$day[0] and $now[2]==$now[3] and $day[2]==1 or $day[0]-1==$now[0] and $now[2]==$now[3] and $now[1]==12 and $day[2]==1)
+			if($now[0]==$date[0] and $now[1]==$date[1] and $now[2]+1==$date[2] or //Same year and month
+				$date[2]==1 and $now[3]==$now[2] and ($now[0]==$date[0] and $now[1]+1==$date[1] or $now[0]+1==$date[0] and $date[1]==1))//Date is the first day of the month
 				return'Tomorrow';
 		}
 
 		//This year, or 3 month of previous
-		return date($now[0]==$day[0] || ($now[0]-$day[0])==1 && $t>=\strtotime('-3month') ? 'd F' : 'd F Y',$t);
+		return date($now[0]==$date[0] || ($now[0]-$date[0])==1 && $t>=\strtotime('-3month') ? 'd F' : 'd F Y',$t);
 	}
 }

@@ -1,14 +1,9 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor;
 
 /** Primitive class for basic support of Telegram: sending messages and checking authentication credentials */
-class Telegram extends Eleanor\Basic
+class Telegram extends \Eleanor\Basic
 {
 	/** @var string Entrypoint of Telegram API */
 	protected readonly string $base_url;
@@ -110,4 +105,5 @@ class Telegram extends Eleanor\Basic
 	}
 }
 
+#Not necessary here, since class name equals filename
 return Telegram::class;

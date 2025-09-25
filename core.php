@@ -1,9 +1,5 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor;
 
 use Eleanor\Classes\E,
@@ -23,9 +19,6 @@ const CHARSET = 'UTF-8';
 
 /** The starting point of internal time is used to reduce used timestamps */
 \defined('Eleanor\BASE_TIME')||\define('Eleanor\BASE_TIME',\mktime(0,0,0,1,1,2025));
-
-/** Windows detector */
-\define('Eleanor\W',\stripos(PHP_OS,'win')===0);
 
 /** Obtaining path to file and line number where error has happened
  * @param null|string|object $filter null - previous step, object - last mention, class - first non-mention

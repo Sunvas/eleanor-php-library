@@ -1,26 +1,18 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor;
 
 /** Punycode support (cyrillic domains) */
-class Punycode extends Eleanor\Basic
+class Punycode extends \Eleanor\Basic
 {
 	/** Domain encoding and decoding to/from Punycode.
-	 * @param string $domain Domain name
+	 * @param string $domain Domain name in UTF-8
 	 * @param bool $encode Punycode encoding flag
 	 * @return ?string */
 	static function Domain(string$domain,bool$encode=true):?string
 	{
 		if($encode)
 		{
-			if(Eleanor\CHARSET!='utf-8')
-				$domain=\mb_convert_encoding($domain,'utf-8',Eleanor\CHARSET);
-
 			$domain=\explode('.',$domain);
 
 			foreach($domain as &$d)
@@ -35,10 +27,8 @@ class Punycode extends Eleanor\Basic
 
 			foreach($domain as &$d)
 				$d=self::Decode(\strtolower($d));
-			$domain=\join('.',$domain);
 
-			if(Eleanor\CHARSET!='utf-8')
-				$domain=\mb_convert_encoding($domain,Eleanor\CHARSET,'utf-8');
+			$domain=\join('.',$domain);
 		}
 
 		return$domain;
@@ -240,4 +230,5 @@ class Punycode extends Eleanor\Basic
 	}
 }
 
+#Not necessary here, since class name equals filename
 return Punycode::class;

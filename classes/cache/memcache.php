@@ -1,33 +1,24 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes\Cache;
-use Eleanor,
-	Eleanor\Classes\E;
+
+use Eleanor\Classes\E;
 
 /** Adapter of MemCache engine */
-class MemCache implements Eleanor\Interfaces\Cache
+class MemCache implements \Eleanor\Interfaces\Cache
 {
-	/** @var array Keys in the cache */
-	private array $names;
+	static string $host='localhost';
+	static int $port=11211;
 
-	/** @var \Memcache object */
+	/** @var \Memcache Cache machine instance */
 	readonly \Memcache $M;
 
-	/** @param string $u Uniqueness for cache-engine
+	/** @param string $prefix Prefix for values in cache machine
 	 * @throws E */
-	function __construct(readonly string$u='')
+	function __construct(readonly string$prefix='')
 	{
 		$this->M=new \Memcache;
-
-		#Host and port contants
-		$host='Eleanor\\Classes\\Cache\\MEMCACHE_HOST';
-		$port='Eleanor\\Classes\\Cache\\MEMCACHE_PORT';
-
-		$connected=$this->M->connect(\defined($host) ? \constant($host) : 'localhost', \defined($port) ? \constant($port) : 11211);
+		$connected=$this->M->connect(static::$host,static::$port);
 
 		if(!$connected)
 		{
@@ -35,68 +26,31 @@ class MemCache implements Eleanor\Interfaces\Cache
 			throw new E('MemCache failure',E::SYSTEM,hint:'Try to delete the file library/classes/cache/memcache.php');
 		}
 
-		$this->M->setCompressThreshold(20000,0.2);
-
-		$this->names=(array)($this->Get('') ?? []);
+		$this->M->setCompressThreshold(20000);
 	}
 
-	function __destruct()
-	{
-		$this->Put('',$this->names);
-		$this->M->close();
-	}
-
-	/** Storing key=>value
-	 * @param string $k Key. It is recommended to specify key as a concatenating of tags like tag1_tag2...
+	/** Storing value
+	 * @param string $k Key
 	 * @param mixed $v Value
 	 * @param int $ttl Time To Live in seconds */
-	function Put(string$k,mixed$v,int$ttl=0):void
+	function Put(string$k,mixed$v,int$ttl=86400):void
 	{
-		$r=$this->M->set($this->u.$k,$v,\is_bool($v) || \is_int($v) || \is_float($v) ? 0 : \MEMCACHE_COMPRESSED,$ttl);
-
-		if($r)
-			$this->names[$k]=$ttl+\time();
+		$this->M->set($this->prefix.$k,$v,\is_bool($v) || \is_int($v) || \is_float($v) ? 0 : \MEMCACHE_COMPRESSED,$ttl);
 	}
 
-	/** Retrieving value by key
+	/** Retrieving value
 	 * @param string $k Key
 	 * @return mixed */
 	function Get(string$k):mixed
 	{
-		if(!isset($this->names[$k]))
-			return null;
-
-		$r=$this->M->get($this->u.$k);
-
-		if($r===false)
-		{
-			unset($this->names[$k]);
-			$r=null;
-		}
-
-		return$r;
+		return $this->M->get($this->prefix.$k);
 	}
 
-	/** Removing value by key
-	 * @param string $k Ключ */
+	/** Removing value
+	 * @param string $k Key */
 	function Delete(string$k):void
 	{
-		unset($this->names[$k]);
-		$this->M->delete($this->u.$k);
-	}
-
-	/** Removing value by tag, if key is empty - all cache will be erased
-	 * @param string $tag Tag */
-	function DeleteByTag(string$tag):void
-	{
-		if($tag)
-		{
-			foreach($this->names as $k=>$v)
-				if($tag=='' or !\str_contains($k,$tag))
-					$this->Delete($k);
-		}
-		else
-			$this->M->flush();
+		$this->M->delete($this->prefix.$k);
 	}
 }
 

@@ -1,16 +1,12 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor,
-	Eleanor\Enums\DateFormat;
+
+use Eleanor\Enums\DateFormat;
 use function Eleanor\BugFileLine;
 
 /** Localization */
-class L10n extends Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L10n
+class L10n extends \Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L10n
 {
 	/** @var string Common language code */
 	static string $code='ru';
@@ -37,7 +33,7 @@ class L10n extends Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L1
 				E::PHP,...BugFileLine()
 			);
 
-		$data=Eleanor\AwareInclude($file);
+		$data=\Eleanor\AwareInclude($file);
 
 		if(!\is_array($data))
 			throw new E('Wrong file format '.$file,
@@ -102,4 +98,5 @@ class L10n extends Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L1
 	}
 }
 
+#Not necessary here, since class name equals filename
 return L10n::class;

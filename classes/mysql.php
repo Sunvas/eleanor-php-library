@@ -1,15 +1,11 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor;
+
 use function Eleanor\BugFileLine;
 
 /** Wrapper for MySQLi driver */
-class MySQL extends Eleanor\Basic
+class MySQL extends \Eleanor\Basic
 {
 	/** @var \MySQLi driver */
 	readonly \MySQLi $M;
@@ -33,7 +29,7 @@ class MySQL extends Eleanor\Basic
 			return;
 		}
 
-		$M=Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
+		$M=\Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
 			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno,params:\compact('host','user','pass','db','port','socket'));
@@ -494,4 +490,5 @@ class MySQL extends Eleanor\Basic
 	}
 }
 
+#Not necessary here, since class name equals filename
 return MySQL::class;

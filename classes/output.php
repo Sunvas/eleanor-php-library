@@ -1,20 +1,15 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
-use Eleanor;
 
 /** Outputting content to the browser */
-class Output extends Eleanor\Basic
+class Output extends \Eleanor\Basic
 {
 	/** @const Powered by header. Feel free to modify it whatever you want! */
 	protected const string POWERED='X-Powered-CMS: Eleanor PHP Library https://eleanor-cms.com/library';
 
 	/** Attempt to return 304 http code (Not Modified) when browser's cache is up to date
-	 * @param string $etag Etag for checking
+	 * @param string $etag Etag for checking (via str_contains)
 	 * @return bool */
 	static function Return304(string$etag=''):bool
 	{
@@ -23,10 +18,10 @@ class Output extends Eleanor\Basic
 		if($etag)
 			$match=\str_contains($if_match,$etag);
 
-		//Проверка expired
+		//Etag contains expired time
 		elseif(\preg_match('#e=(\d{,12})#',$if_match,$matches)>0)
 		{
-			$timestamp=Eleanor\BASE_TIME+(int)$matches[1];
+			$timestamp=\Eleanor\BASE_TIME+(int)$matches[1];
 			$match=$timestamp>=\time();
 		}
 		else
@@ -81,7 +76,7 @@ class Output extends Eleanor\Basic
 			if(\is_int($cache))
 			{
 				$age='immutable, max-age='.$cache;
-				$etag='e='.(\time()+$cache-Eleanor\BASE_TIME);
+				$etag='e='.(\time()+$cache-\Eleanor\BASE_TIME);
 			}
 			else
 			{
@@ -115,4 +110,5 @@ class Output extends Eleanor\Basic
 	}
 }
 
+#Not necessary here, since class name equals filename
 return Output::class;

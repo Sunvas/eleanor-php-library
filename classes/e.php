@@ -1,9 +1,5 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
 
 /** Eleanor's main exception which answers the main question: who is responsible for? */
@@ -110,4 +106,5 @@ LOG;
 	}
 }
 
+#Not necessary here, since class name equals filename
 return E::class;

@@ -1,9 +1,5 @@
 <?php
-/**
-	Eleanor PHP Library © 2025
-	https://eleanor-cms.com/library
-	library@eleanor-cms.com
-*/
+# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes\L10n;
 use Eleanor\Enums\DateFormat;
 
@@ -92,27 +88,33 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 	 * @return string */
 	static function DateText(int$t,bool$human=true):string
 	{
-		$day=\array_map('intval',\explode(',',\date('Y,n,j,t',$t)));
+		$date=\array_map('intval',\explode(',',\date('Y,n,j,t',$t)));
 		$now=\array_map('intval',\explode(',',\date('Y,n,j,t')));
 
 		if($human)
 		{
-			if($day[2]==$now[2] and $day[1]==$now[1] and $day[0]==$now[0])
+			if($date[2]==$now[2] and $date[1]==$now[1] and $date[0]==$now[0])
 				return'Сегодня';
 
-			if($day[2]+1==$now[2] and $now[0]==$day[0] and $now[1]==$day[1] or $day[1]+1==$now[1] and
-				$now[0]==$day[0] and $now[2]==1 and $day[3]==$day[2] or $day[0]+1==$now[0] and $now[2]==1 and
-				$now[1]==1 and $day[3]==$day[2])
+			if($now[0]==$date[0] and $now[1]==$date[1] and $date[2]+1==$now[2] or //Same year and month
+				$now[2]==1 and $date[3]==$date[2] and ($now[0]==$date[0] and $date[1]+1==$now[1] or $date[0]+1==$now[0] and $now[1]==1))//Today is the first day of the month
 				return'Вчера';
 
-			if($day[2]-1==$now[2] and $now[0]==$day[0] and $now[1]==$day[1] or $day[1]-1==$now[1] and
-				$now[0]==$day[0] and $now[2]==$now[3] and $day[2]==1 or $day[0]-1==$now[0] and $now[2]==$now[3] and
-				$now[1]==12 and $day[2]==1)
+			if($now[0]==$date[0] and $now[1]==$date[1] and $now[2]+1==$date[2] or //Same year and month
+				$date[2]==1 and $now[3]==$now[2] and ($now[0]==$date[0] and $now[1]+1==$date[1] or $now[0]+1==$date[0] and $date[1]==1))//Date is the first day of the month
 				return'Завтра';
+
+			if($now[0]==$date[0] and $now[1]==$date[1] and $date[2]+2==$now[2] or //Same year and month
+				($now[2]==2 and $date[3]==$date[2] or $now[2]==1 and $date[3]==$date[2]+1) and ($now[0]==$date[0] and $date[1]+1==$now[1] or $date[0]+1==$now[0] and $now[1]==1))//Today is the 1-2 day of the month
+				return'Позавчера';
+
+			if($now[0]==$date[0] and $now[1]==$date[1] and $now[2]+2==$date[2] or //Same year and month
+				($date[2]==2 and $now[3]==$now[2] or $date[2]==1 and $now[3]==$now[2]+1) and ($now[0]==$date[0] and $now[1]+1==$date[1] or $now[0]+1==$date[0] and $date[1]==1))//Date is the 1-2 day of the month
+				return'Послезавтра';
 		}
 
 		//This year, or 3 month of previous
-		return \sprintf($now[0]==$day[0] || ($now[0]-$day[0])==1 && $t>=\strtotime('-3month') ? '%02d %s' : '%02d %s %d',$day[2],match($day[1]){
+		return \sprintf($now[0]==$date[0] || ($now[0]-$date[0])==1 && $t>=\strtotime('-3month') ? '%02d %s' : '%02d %s %d',$date[2],match($date[1]){
 				1=>'января',
 				2=>'февраля',
 				3=>'марта',
@@ -125,6 +127,6 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 				10=>'октября',
 				11=>'ноября',
 				12=>'декабря',
-			},$day[0]);
+			},$date[0]);
 	}
 }
