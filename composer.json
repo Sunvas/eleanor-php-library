@@ -3,7 +3,7 @@
   "description": "Fucking perfect PHP library designed for serving up SPA (single page applications) and bloat-free websites.",
   "minimum-stability": "stable",
   "keywords": ["php","php-library","php8","php8-library"],
-  "homepage": "https://eleanor-cms.ru/library",
+  "homepage": "https://eleanor-cms.com/library",
   "license": "MIT",
   "authors": [
 	{
@@ -12,6 +12,6 @@
 	}
   ],
   "require": {
-    "php": ">=8.3.0"
+    "php": ">=8.4.0"
   }
 }

@@ -53,6 +53,17 @@ class Output extends \Eleanor\Basic
 		return$hash;
 	}
 
+	/** @var array For the link header */
+	protected static array $links=[];
+
+	/** Adding item to the link header
+	 * @param string $url Link to resource
+	 * @param string $rel Should be "preconnect" or "preload" */
+	static function Link(string$url,string$rel='preconnect',...$a):void
+	{
+		static::$links[]="<{$url}>; rel=".$rel.($a ? '; '.\http_build_query($a,'','; ') : '');
+	}
+
 	/** @const The most used mime types for SendHeaders */
 	const string
 		XML='text/xml',
@@ -88,9 +99,11 @@ class Output extends \Eleanor\Basic
 			\header("ETag: \"{$etag}\"");
 		}
 
-		#Без кэша
+		#Without cache
 		else
 			\header('Cache-Control: no-cache, no-store');
+
+		$is_html=$mimetype===static::HTML;
 
 		if(static::$nonces)
 		{
@@ -98,8 +111,11 @@ class Output extends \Eleanor\Basic
 
 			\header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic' 'nonce-{$nonces}'");
 		}
-		elseif($mimetype===static::HTML)
+		elseif($is_html)
 			\header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic'");
+
+		if($is_html and static::$links)
+			header('Link: '.join(', ',static::$links));
 
 		if(static::POWERED)
 			\header(static::POWERED);

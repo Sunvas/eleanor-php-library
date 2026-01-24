@@ -2,8 +2,6 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes\Cache;
 
-use Eleanor\Classes\E;
-
 /** Cache based on Shared Memory Functions */
 class Shmop implements \Eleanor\Interfaces\Cache
 {
@@ -96,7 +94,9 @@ class Shmop implements \Eleanor\Interfaces\Cache
 		if($ipc>0)
 		{
 			$h=\shmop_open($ipc,'w',0,0);
-			\shmop_delete($h);
+
+			if($h!==false)
+				\shmop_delete($h);
 		}
 
 		\unlink($f);

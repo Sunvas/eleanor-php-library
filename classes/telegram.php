@@ -48,11 +48,6 @@ class Telegram extends \Eleanor\Basic
 		$this->curl=\curl_init($this->base_url);
 	}
 
-	function __destruct()
-	{
-		\curl_close($this->curl);
-	}
-
 	/** Making a request to Telegram
 	 * @url https://core.telegram.org/bots/api#making-requests
 	 * @param string $method
