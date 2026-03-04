@@ -438,8 +438,8 @@ class MySQL extends \Eleanor\Basic
 	 * @param array $params Parameters
 	 * @param bool $result Flag for returning MySQLi_result, instead of MySQLi_stmt
 	 * @throws EM
-	 * @return \MySQLi_result | \MySQLi_stmt (depending on $result) */
-	function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt
+	 * @return \MySQLi_result | \MySQLi_stmt | false (depending on $result) */
+	function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt|false
 	{
 		if(!$params)
 			throw new EM('No data supplied for parameters of prepared statement',EM::PREPARED,...BugFileLine($this),query:$q,params:$params);

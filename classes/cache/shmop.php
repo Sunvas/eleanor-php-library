@@ -63,7 +63,7 @@ class Shmop implements \Eleanor\Interfaces\Cache
 
 		if(\filemtime($f)<\time() || $ipc<0)
 		{
-			$this->Delete($k);
+			$this->Delete($k,$ipc);
 			return null;
 		}
 
@@ -82,18 +82,18 @@ class Shmop implements \Eleanor\Interfaces\Cache
 
 	/** Removing value
 	 * @param string $k Key */
-	function Delete(string$k):void
+	function Delete(string$k,?int$ipc=null):void
 	{
 		$f=$this->path."/{$k}.shm";
 
 		if(!\file_exists($f))
 			return;
 
-		$ipc=\ftok($f,static::$project_id);
+		$ipc??=\ftok($f,static::$project_id);
 
 		if($ipc>0)
 		{
-			$h=\shmop_open($ipc,'w',0,0);
+			$h=\shmop_open($ipc,'w',0644,0);
 
 			if($h!==false)
 				\shmop_delete($h);
