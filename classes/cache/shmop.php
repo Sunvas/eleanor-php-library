@@ -93,7 +93,7 @@ class Shmop implements \Eleanor\Interfaces\Cache
 
 		if($ipc>0)
 		{
-			$h=\shmop_open($ipc,'w',0644,0);
+			$h=@\shmop_open($ipc,'w',0644,0);
 
 			if($h!==false)
 				\shmop_delete($h);

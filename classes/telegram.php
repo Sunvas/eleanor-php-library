@@ -15,7 +15,8 @@ class Telegram extends \Eleanor\Basic
 	 * @param array $data Incoming data
 	 * @param string $key API key
 	 * @param int $expire Number of seconds after which data is considered obsolete
-	 * @return array|string String on error, array on success */
+	 * @return array|string String on error, array on success
+	 * @see https://core.telegram.org/widgets/login */
 	static function CheckAuth(array$data,string$key,int$expire=3600):array|string
 	{
 		$signature=\is_string($data['hash'] ?? 0) ? $data['hash'] : '';

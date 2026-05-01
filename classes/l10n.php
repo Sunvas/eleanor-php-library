@@ -56,43 +56,44 @@ class L10n extends \Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L
 	/** Static obtaining value from existed l10n pool
 	 * @param array $l10n Pool of values
 	 * @param mixed $d Default value
+	 * @param string $f Fallback value
 	 * @return mixed */
-	static function Item(array$l10n,mixed$d=null):mixed
+	static function Item(array$l10n,mixed$d=null,string$f=''):mixed
 	{
-		return $l10n[static::$code] ?? $l10n[''] ?? $d;
+		return $l10n[static::$code] ?? $l10n[$f] ?? $d;
 	}
 
 	/** Set value
-	 * @param string|int $k Key
-	 * @param mixed $v Value */
-	function offsetSet(mixed$k,mixed$v): void
+	 * @param string|int $offset Key
+	 * @param mixed $value Value */
+	function offsetSet(mixed$offset,mixed$value): void
 	{
-		$this->data[$k]=$v;
+		$this->data[$offset]=$value;
 	}
 
 	/** Checking availability
-	 * @param string|int $k Key
+	 * @param string|int $offset Key
 	 * @return bool */
-	function offsetExists(mixed$k): bool
+	function offsetExists(mixed$offset): bool
 	{
-		return isset($this->data[$k]);
+		return isset($this->data[$offset]);
 	}
 
 	/** Deleting value
-	 * @param string|int $k Key */
-	function offsetUnset(mixed$k): void
+	 * @param string|int $offset Key */
+	function offsetUnset(mixed$offset): void
 	{
-		unset($this->data[$k]);
+		unset($this->data[$offset]);
 	}
 
 	/** Obtaining value
-	 * @param int|string $k Key
-	 * @throws E
-	 * @return mixed */
-	function offsetGet(mixed$k):mixed
+	 * @param int|string $offset Key
+	 * @return mixed
+	 * @throws E */
+	function offsetGet(mixed$offset):mixed
 	{
-		return $this->data[$k] ?? throw new E(
-			"Unable to get translation key '{$k}'",
+		return $this->data[$offset] ?? throw new E(
+			"Unable to get translation key '{$offset}'",
 			E::PHP,...BugFileLine()
 		);
 	}

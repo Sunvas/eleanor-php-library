@@ -2,7 +2,7 @@
 $ent=ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE | ENT_DISALLOWED;
 
 return[
-	/** Ошибка при подключении к БД */
+	/** Error when connecting to the DB. */
 	'connect'=>function($error,$errno,$db)use($ent){
 		$error=$errno ? htmlspecialchars($error,$ent,Eleanor\CHARSET,false) : '';
 
@@ -18,7 +18,7 @@ Can't connect to database {$db}{$error}
 HTML;
 	},
 
-	/** Ошибка в запросе */
+	/** Error in query */
 	'query'=>function($error,$errno,$query)use($ent){
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
@@ -27,7 +27,7 @@ SQL query failed: <b>{$error}</b> (error #{$errno})
 HTML;
 	},
 
-	/** Ошибка в prepared statement */
+	/** Error in prepared statement */
 	'prepared'=>function($error,$errno,$query,$params)use($ent){
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
@@ -36,7 +36,14 @@ Prepared statement failed: <b>{$error}</b> (error #{$errno})
 HTML;
 	},
 
-	/** Неизвестная ошибка */
+	/** Error in value: it is expected that each value passed to DB should be of a primitive type (scalar or null) */
+	'value'=>function($type,$name){
+		return<<<HTML
+<code>{$type}</code> was passed as value of <code>{$name}</code>
+HTML;
+	},
+
+	/** Unknown error */
 	'default'=>function($error,$errno)use($ent){
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 

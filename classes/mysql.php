@@ -73,7 +73,7 @@ class MySQL extends \Eleanor\Basic
 		return parent::__call($n,$a);
 	}
 
-	/** Synchronising time of DB with time of PHP (applying timezone). Synchronization works only for TIMESTAMP fields */
+	/** Synchronizing time of DB with time of PHP (applying timezone). Synchronization works only for TIMESTAMP fields */
 	function SyncTimeZone():void
 	{
 		$t=\date_offset_get(\date_create());
@@ -128,14 +128,14 @@ class MySQL extends \Eleanor\Basic
 
 	/** Wrapper for INSERT queries
 	 * @param string $t Table name
-	 * @param array $d Data. Formats are described in Insert4Query method
-	 * @param bool|string $ignore_odku IGNORE flag or contents for ON DUPLICATE KEY UPDATE structure
-	 * @param ?array $params Prepared statement parameters, if NULL - Query will be called
+	 * @param array $d Data. Formats are described in Insert4 method
+	 * @param bool|string|array $ignore_odku IGNORE flag or contents for ON DUPLICATE KEY UPDATE structure
+	 * @param array $params Prepared statement parameters for ODKU
 	 * @return int Insert ID
 	 * @throws EM */
-	function Insert(string$t,array$d,bool|string$ignore_odku=true,?array$params=[]):int
+	function Insert(string$t,array$d,bool|string|array$ignore_odku=true,array$params=[]):int
 	{
-		if(is_bool($ignore_odku))
+		if(\is_bool($ignore_odku))
 		{
 			$ext=$ignore_odku ? self::IGNORE : '';
 			$odku='';
@@ -143,38 +143,39 @@ class MySQL extends \Eleanor\Basic
 		else
 		{
 			$ext='';
-			$odku='ON DUPLICATE KEY UPDATE '.$ignore_odku;
+			$odku='ON DUPLICATE KEY UPDATE ';
+
+			if(\is_string($ignore_odku))
+				$odku.=$ignore_odku;
+			else
+			{
+				foreach($ignore_odku as $k=>&$v)
+					$v="`{$k}`=".$this->Escape($v);
+
+				$odku.=\join(',',$ignore_odku);
+			}
 		}
 
-		$insert=null;
+		[$insert,$params2]=$this::Insert4($d);
 
-		if($params!==null)
-		{
-			[$insert,$params1]=$this::Insert4Prepared($d);
-			array_unshift($params,...$params1);
-		}
-
-		if($params)
+		if(\array_unshift($params,...$params2)>0)
 			return$this->Execute("INSERT{$ext} INTO `{$t}`".$insert.$odku,$params,false)->insert_id;
 
-		$insert??=$this->Insert4Query($d);
 		$this->Query("INSERT{$ext} INTO `{$t}`".$insert.$odku);
-
 		return$this->M->insert_id;
 	}
 
 	/** Wrapper for REPLACE queries
 	 * @param string $t Table name
-	 * @param array $d Data. Formats are described in Insert4Query method
+	 * @param array $d Data. Formats are described in Insert4 method
 	 * @param bool $ignore IGNORE flag
-	 * @param bool $query Flag to force using Query instead of Execute
 	 * @return int Affected rows
 	 * @throws EM */
-	function Replace(string$t,array$d,bool$ignore=false,bool$query=false):int
+	function Replace(string$t,array$d,bool$ignore=false):int
 	{
 		$ext=$ignore ? self::IGNORE : '';
 
-		[$insert,$params]=$query ? [$this->Insert4Query($d),false] : $this::Insert4Prepared($d);
+		[$insert,$params]=$this::Insert4($d);
 
 		if(!$params)
 		{
@@ -186,57 +187,19 @@ class MySQL extends \Eleanor\Basic
 		return$this->Execute("REPLACE{$ext} INTO `{$t}` ".$insert,$params,false)->affected_rows;
 	}
 
-	/** Generating INSERT section for Query
-	 * @param array $d Data in one of the formats:
-	 * [ 'field1'=>'value1', 'field2'=>'value2' ] or
-	 * [ 'field1'=>[ 'values11', 'value12' ], 'field2'=>[ 'value21', 'value22' ] ] or
-	 * [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
-	 * @return string */
-	function Insert4Query(array$d):string
-	{
-		#Detecting [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
-		if(\array_is_list($d))
-		{
-			$k=\array_key_first($d);
-			$fields=\array_keys($d[$k]);
-			$values=[];
-
-			foreach($d as $input)
-			{
-				$group=[];
-
-				foreach($fields as $index=>$field)
-					$group[]=$this->Escape($input[$field] ?? $input[$index] ?? null);
-
-				$values[]='('.\join(',',$group).')';
-			}
-
-			$fields='(`'.\join('`,`',$fields).'`)';
-		}
-		else
-		{
-			$fields='(`'.\join('`,`',\array_keys($d)).'`)';
-
-			$values=\array_values($d);
-			$values=\array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
-			$values=isset($values[1]) ? \array_map(null,...$values) : [...$values];//Из строк в столбцы
-			$values=\array_map(fn($item)=>'('.\join(',',\array_map($this->Escape(...),$item)).')',$values);
-		}
-
-		return $fields.'VALUES'.\join(',',$values);
-	}
-
 	/** Generating INSERT section for Prepared Statements
-	 * @param array $d Data. See formats in Insert4Query description
+	 * @param array $d Data in one of the formats:
+	 *  [ 'field1'=>'value1', 'field2'=>'value2' ] or
+	 *  [ 'field1'=>[ 'values11', 'value12' ], 'field2'=>[ 'value21', 'value22' ] ] or
+	 *  [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
 	 * @return array [string INSERT section,array $params] */
-	static function Insert4Prepared(array$d):array
+	static function Insert4(array $d):array
 	{
 		$params=[];
 
 		if(\array_is_list($d))
 		{
-			$k=\array_key_first($d);
-			$fields=\array_keys($d[$k]);
+			$fields=\array_first($d) |> \array_keys(...);
 			$values=[];
 
 			foreach($d as $input)
@@ -246,7 +209,7 @@ class MySQL extends \Eleanor\Basic
 				foreach($fields as $index=>$field)
 				{
 					$v=$input[$field] ?? $input[$index] ?? null;
-					$bypass=static::Bypass($v);
+					$bypass=\is_string($v) ? null : static::Bypass($v);
 
 					if($bypass===null)
 					{
@@ -268,7 +231,7 @@ class MySQL extends \Eleanor\Basic
 		{
 			$fields='(`'.\join('`,`',\array_keys($d)).'`)';
 			$map=function($v)use(&$params){
-				$bypass=static::Bypass($v);
+				$bypass=\is_string($v) ? null : static::Bypass($v);
 
 				if($bypass!==null)
 					return$bypass;
@@ -278,7 +241,7 @@ class MySQL extends \Eleanor\Basic
 			};
 
 			$values=\array_values($d);
-			$values=\array_map(fn($item)=>(array)$item,$values);//Преобразование всех значений в array
+			$values=\array_map(fn($item)=>(array)$item,$values);#PHP 8.5 settype array
 			$values=isset($values[1]) ? \array_map(null,...$values) : [...$values];//Из строк в столбцы
 			$values=\array_map(fn($item)=>'('.\join(',',\array_map($map,$item)).')',$values);
 		}
@@ -290,47 +253,37 @@ class MySQL extends \Eleanor\Basic
 	 * @param string $t Table name
 	 * @param array $d Data for update
 	 * @param string|array $w Conditions (WHERE section without WHERE keyword).
-	 * @param ?array $params Prepared statement parameter, if NULL - Query will be called
+	 * @param array $params Prepared statement parameters for $w
 	 * @param bool $ignore IGNORE flag
 	 * @return int Amount of affected rows
 	 * @throws EM */
-	function Update(string$t,array$d,string|array$w='',?array$params=[],bool$ignore=true):int
+	function Update(string$t,array$d,string|array$w='',array$params=[],bool$ignore=true):int
 	{
 		if(!$d)
 			return 0;
 
 		$ext=$ignore ? self::IGNORE : '';
 		$q="UPDATE{$ext} `{$t}` SET ";
+		$params2=[];
 
-		if($params===null)
+		foreach($d as $k=>$v)
 		{
-			foreach($d as $k=>$v)
-				$q.="`{$k}`=".$this->Escape($v).',';
-		}
-		else
-		{
-			foreach($d as $k=>$v)
+			$bypass=\is_string($v) ? null : $this::Bypass($v);
+
+			if($bypass===null)
 			{
-				$bypass=$this::Bypass($v);
-
-				if($bypass===null)
-					$v='?';
-				else
-				{
-					unset($d[$k]);
-					$v=$bypass;
-				}
-
-				$q.="`{$k}`={$v},";
+				$params2[]=$v;
+				$v='?';
 			}
+			else
+				$v=$bypass;
 
-			\array_unshift($params,...\array_values($d));
+			$q.="`{$k}`={$v},";
 		}
 
-		$q=\rtrim($q,',');
-		$q.=$this->Where($w);
+		$q=\rtrim($q,',').$this->Where($w);
 
-		if($params)
+		if(\array_unshift($params,...$params2)>0)
 			return$this->Execute($q,$params,false)->affected_rows;
 
 		$this->Query($q);
@@ -359,32 +312,31 @@ class MySQL extends \Eleanor\Basic
 	/** Converting array to a sequence for the IN() statement with escaping.
 	 * @param array $a Data
 	 * @param bool $not Flag for NOT IN
-	 * @return string */
+	 * @return string
+	 * @throws EM */
 	function In(array$a,bool$not=false):string
 	{
 		if(count($a)==1)
-		{
-			$a=reset($a);
-			return($not ? '!' : '').'='.$this->Escape($a);
-		}
+			return($not ? '!' : '').'='.$this->Escape(\array_first($a));
 
-		foreach($a as &$v)
-			$v=$this->Escape($v);
+		#PHP 8.6
+		$in=\join(',',\array_map($this->Escape(...),$a));
 
-		return($not ? ' NOT' : '').' IN ('.join(',',$a).')';
+		return($not ? ' NOT' : '')." IN ({$in})";
 	}
 
 	/** Generating WHERE conditions
 	 * @param string|array $w Conditions
-	 * @return string */
+	 * @return string
+	 * @throws EM */
 	function Where(string|array$w):string
 	{
-		if(is_array($w))
+		if(\is_array($w))
 		{
 			foreach($w as $k=>&$v)
 				$v="`{$k}`=".$this->Escape($v);
 
-			$w=implode(' AND ',$w);
+			$w=\join(' AND ',$w);
 		}
 
 		return $w ? ' WHERE '.$w : '';
@@ -395,39 +347,37 @@ class MySQL extends \Eleanor\Basic
 	 * @return mixed NULL when value need to be escaped */
 	static function Bypass(mixed$p):mixed
 	{
-		if($p===null)
-			return'NULL';
-
 		if(\is_int($p) or \is_float($p))
 			return$p;
 
 		if(\is_bool($p))
-			return(int)$p;
+			return+$p;
 
 		if($p instanceof \Closure)
-			return$p() ?? 'NULL';
+			return $p() ?? 'NULL';
 
-		return null;
+		return $p===null ? 'NULL' : null;
 	}
 
 	/** Escaping unsafe characters in strings
-	 * @param mixed $p Value for escaping
+	 * @param null|int|float|string|bool|\Closure $p Value for escaping
 	 * @param bool $q Flag for putting result into quotes
-	 * @return mixed */
-	function Escape(mixed$p,bool$q=true):mixed
+	 * @param string $name Name for debug purpose
+	 * @return int|float|string
+	 * @throws EM */
+	function Escape(null|int|float|string|bool|\Closure$p,bool$q=true,string$name=''):int|float|string
 	{
-		$bypass=$this::Bypass($p);
-
-		if($bypass!==null)
-			return$bypass;
-
-		if(\is_array($p))
-			return$this->In($p);
-
 		if(!\is_string($p))
-			$p=(string)$p;
+		{
+			$bypass=$this::Bypass($p);
 
-		if($p!=='' and !\ctype_alnum($p))
+			if(\is_scalar($bypass))
+				return$bypass;
+
+			throw new EM(\is_object($p) ? 'object of '.\get_class($p) : \gettype($p),EM::VALUE,query:$name);
+		}
+
+		if($p)
 			$p=$this->M->real_escape_string($p);
 
 		return$q ? "'{$p}'" : $p;
@@ -462,27 +412,29 @@ class MySQL extends \Eleanor\Basic
 	 * @param \MySQLi_stmt $stmt
 	 * @param array $params Parameters
 	 * @return bool
-	 * @throws \mysqli_sql_exception */
+	 * @throws \mysqli_sql_exception|EM */
 	static function BindParams(\MySQLi_stmt$stmt,array$params):bool
 	{
-		//Case when all parameters are strings
-		if(\array_reduce($params,fn($carry,$item)=>$carry && \is_string($item),true))
-			return$stmt->execute($params);
-
 		$types='';
 
-		foreach($params as &$p)
-			if(\is_int($p))
+		foreach($params as $name=>&$p)
+			if(\is_string($p))
+				$types.='s';
+			elseif(\is_int($p))
 				$types.='i';
 			elseif(\is_float($p))
 				$types.='d';
-			else
+			elseif(\is_bool($p))
 			{
-				$types.='s';
-
-				if(!\is_string($p))
-					$p=(string)$p;
+				$p=+$p;
+				$types.='i';
 			}
+			else
+				throw new EM(\is_object($p) ? ' object of '.\get_class($p) : \gettype($p),EM::VALUE,...BugFileLine(static::class),query:$name);
+
+		//Case when all parameters are strings
+		if(!\trim($types,'s'))
+			return$stmt->execute($params);
 
 		$stmt->bind_param($types, ...$params);
 

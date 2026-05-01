@@ -94,7 +94,7 @@ class Punycode extends \Eleanor\Basic
 
 		$source='';
 
-		foreach($decoded as &$v)
+		foreach($decoded as $v)
 			if($v<128)
 				$source.=\chr($v);#7bit are transferred literally
 			elseif($v<(1<<11))
@@ -147,7 +147,7 @@ class Punycode extends \Eleanor\Basic
 		$ex=$bs='';
 		$ucnt=\count($unicode);
 
-		foreach($unicode as &$v)
+		foreach($unicode as $v)
 			if($v<128)
 			{
 				$bs.=\chr($v);
@@ -158,14 +158,14 @@ class Punycode extends \Eleanor\Basic
 		{
 			$m=100000;
 
-			foreach($unicode as &$v)
+			foreach($unicode as $v)
 				if($v>=$n and $v<=$m)
 					$m=$v;
 
 			$delta+=($m-$n)*($cc+1);
 			$n=$m;
 
-			foreach($unicode as &$v)
+			foreach($unicode as $v)
 			{
 				if($v<$n)
 					$delta++;

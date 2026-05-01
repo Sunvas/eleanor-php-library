@@ -13,7 +13,10 @@ class EM extends \Eleanor\Abstracts\E
 		QUERY=2,
 
 		/** Issue in prepared statement */
-		PREPARED=3;
+		PREPARED=3,
+
+		/** Issue with value */
+		VALUE=4;
 
 	/** @param string $message The same as in \Exception
 	 * @param int $code Constants of class (from above) should be used
@@ -43,6 +46,7 @@ class EM extends \Eleanor\Abstracts\E
 			self::CONNECT=>$l10n['connect']($this->message,$this->errno,$this->params['db']),
 			self::QUERY=>$l10n['query']($this->message,$this->errno,$this->query),
 			self::PREPARED=>$l10n['prepared']($this->message,$this->errno,$this->query,$this->params),
+			self::VALUE=>$l10n['value']($this->message,$this->query),
 			default=>$l10n['default']($this->message,$this->errno),
 		};
 	}
@@ -54,6 +58,7 @@ class EM extends \Eleanor\Abstracts\E
 			self::CONNECT=>'db_connect',
 			self::QUERY=>'db_query',
 			self::PREPARED=>'db_prepared',
+			self::VALUE=>'db_value',
 			default=>'db_unknown'
 		};
 
@@ -123,6 +128,16 @@ LOG;
 				$log.=<<<LOG
 Query: {$data['q']}
 Params: {$data['p']}
+File: {$data['f']}[{$data['l']}]
+Last happened: {$data['d']}, total: {$data['n']}
+LOG;
+			break;
+
+			case self::VALUE:
+				$data['q']=$this->query;
+
+				$log.=<<<LOG
+Field name: {$data['q']}
 File: {$data['f']}[{$data['l']}]
 Last happened: {$data['d']}, total: {$data['n']}
 LOG;

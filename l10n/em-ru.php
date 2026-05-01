@@ -36,6 +36,13 @@ Prepared statement не выполнился: <b>{$error}</b> (error #{$errno})
 HTML;
 	},
 
+	/** Ошибка в значении: ожидается, что каждое передаваемое в БД значение будет примитивом (scalar или null) */
+	'value'=>function($type,$name){
+		return<<<HTML
+В качестве значения <code>{$name}</code> передано <code>{$type}</code>.
+HTML;
+	},
+
 	/** Неизвестная ошибка */
 	'default'=>function($error,$errno)use($ent){
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
