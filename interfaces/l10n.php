@@ -9,9 +9,9 @@ interface L10n
 {
 	/** Human representation of the date
 	 * @param int|string $d Date in plain format, or timestamp, or 0 or '' (for current date)
-	 * @param DateFormat $t
+	 * @param DateFormat $f
 	 * @return string */
-	static function Date(int|string$d,DateFormat$t):string;
+	static function Date(int|string$d,DateFormat$f):string;
 }
 
 #Not necessary here, since interface name equals filename

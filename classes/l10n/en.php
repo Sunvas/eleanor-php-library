@@ -3,20 +3,21 @@
 namespace Eleanor\Classes\L10n;
 use Eleanor\Enums\DateFormat;
 
-/** Поддержка английского языка */
+/** English language support */
 class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 {
-	/** Образование множественной формы слова
-	 * @param int $n Число
-	 * @param array $forms Формы слова. Пример ['один','два и больше']
-	 * @return mixed */
-	static function Plural(int$n,array$forms):mixed
+	/** Formatting singular and plural nouns
+	 * @param int $n Number
+	 * @param string $singular form of the word. Example: item, page
+	 * @param ?string $plural form of the word. If omitted, plural form will be made by adding 's' to the singular form.
+	 * @return string */
+	static function Plural(int$n,string$singular,?string$plural=null):string
 	{
-		return$n==1 ? $forms[0] : $forms[1];
+		return$n===1 ? $singular : $plural ?? $singular.'s';
 	}
 
-	/** Представление даты для человека
-	 * @param int|string $d Дата в обычном машинном формате, либо timestamp, 0 либо пустая строка - текущая дата
+	/** Formatting date/time in human-readable format
+	 * @param int|string $d Machine-readable date/time or timestamp. If 0 or empty string - current date will be used
 	 * @param DateFormat $f
 	 * @return string */
 	static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
@@ -41,12 +42,13 @@ class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 		};
 	}
 
-	/** Человеческое представление даты
-	 * @param int $t Дата в формате timestamp
-	 * @param bool $human Флаг включения значений "Today", "Tomorrow", "Yesterday"
+	/** Formatting date in human-readable format
+	 * @param int $t Timestamp
+	 * @param bool $human Flag to enable "Today", "Tomorrow", "Yesterday" instead of a date
 	 * @return string */
 	static function TextDate(int$t,bool$human=true):string
 	{
+		#PHP 8.6
 		$date=\explode(',',\date('Y,n,j,t',$t));
 		$now=\explode(',',\date('Y,n,j,t'));
 
@@ -64,7 +66,7 @@ class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 				return'Tomorrow';
 		}
 
-		//This year, or 3 month of previous
+		#Omitting the year, if the date refers to the current year or the past one, but not more than 3 months
 		return date($now[0]==$date[0] || ($now[0]-$date[0])==1 && $t>=\strtotime('-3month') ? 'd F' : 'd F Y',$t);
 	}
 }

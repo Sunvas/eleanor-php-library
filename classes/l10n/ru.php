@@ -8,12 +8,13 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 {
 	/** Образование множественной формы слова
 	 * @param int $n Число
-	 * @param array $forms Формы слова. Пример ['один','два, три, четыре', 'пять, шесть, семь, восемь, девять, ноль')
-	 * @return mixed */
-	static function Plural(int$n,array$forms):mixed
+	 * @param string $form1 Форма единственного числа. Пример: элемент, страница
+	 * @param string $form24 Форма множетсвенного числа для 2-4. Пример: элемента, страницы
+	 * @param ?string $form5 Форма множественного числа для 5+. Пример: элементов, страниц
+	 * @return string */
+	static function Plural(int$n,string$form1,string$form24,?string$form5=null):string
 	{
-		$forms+=['','',''];
-		return $n%10==1&&$n%100!=11?$forms[0]:($n%10>=2&&$n%10<=4&&($n%100<10||$n%100>=20)?$forms[1]:$forms[2]);
+		return $n%10==1 && $n%100!=11 ? $form1 : ($n%10>=2 && $n%10<=4 && ($n%100<10 || $n%100>=20) ? $form24 : $form5 ?? $form24);
 	}
 
 	/** Транслитерация строки в латинницу
@@ -33,8 +34,8 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 		);
 	}
 
-	/** Представление даты для человека
-	 * @param int|string $d Дата в обычном машинном формате, либо timestamp, 0 либо пустая строка - текущая дата
+	/** Форматирование даты/времени в читаемом для человека формате
+	 * @param int|string $d Дата/время в машинном формате или timestamp. Если 0 либо пустая строка - текущая дата
 	 * @param DateFormat $f
 	 * @return string */
 	static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
@@ -82,12 +83,13 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 		}.(\idate('Y')==$y ? '' : ' '.$y);
 	}
 
-	/** Человеческое представление даты
-	 * @param int $t Дата в формате timestamp
-	 * @param bool $human Флаг включения значений "Сегодня", "Завтра", "Вчера"
+	/** Формирование даты в читаемом для человека формате
+	 * @param int $t Timestamp
+	 * @param bool $human Флаг включения "Сегодня", "Завтра", "Послезавтра", "Вчера" и "Позавчера" вместо даты
 	 * @return string */
 	static function DateText(int$t,bool$human=true):string
 	{
+		#PHP 8.6
 		$date=\array_map('intval',\explode(',',\date('Y,n,j,t',$t)));
 		$now=\array_map('intval',\explode(',',\date('Y,n,j,t')));
 
@@ -113,7 +115,7 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 				return'Послезавтра';
 		}
 
-		//This year, or 3 month of previous
+		#Опускаем год, если дата относится к текущему году или прошлому, но не более чем на 3 месяца
 		return \sprintf($now[0]==$date[0] || ($now[0]-$date[0])==1 && $t>=\strtotime('-3month') ? '%02d %s' : '%02d %s %d',$date[2],match($date[1]){
 				1=>'января',
 				2=>'февраля',
