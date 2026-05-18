@@ -19,17 +19,6 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 	/** @var array Property names that become references to the original properties of primary object when cloning */
 	protected static array $linking=[];
 
-	/** @var bool Flag allowing appending results to storage property */
-	protected bool $append=true;
-
-	/** @var Append $content Accessing object though content property disables appending and passes content of storage as content variable to the next template */
-	public Append $content {
-		get{
-			$this->append=false;
-			return $this;
-		}
-	}
-
 	function __construct()
 	{
 		$this->primary=true;
@@ -54,7 +43,7 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 	 * @return string */
 	function __invoke(string$n,...$a):string
 	{
-		return$this->_($n,$a);
+		return$this->_($n,...$a);
 	}
 
 	/** Fluent interface realization
@@ -73,13 +62,7 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 			return$O->__call($n,$a);
 		}
 
-		if($this->append)
-			$this->storage.=$this->_($n,$a);
-		else
-		{
-			$this->storage=$this->_($n,$a);
-			$this->append=true;
-		}
+		$this->storage.=$this->_($n,...$a);
 
 		return$this;
 	}
@@ -87,7 +70,7 @@ abstract class Append extends Eleanor\Basic implements \Stringable
 	/** Source of fluent interface methods
 	 * @param string $n Name
 	 * @param array $a Arguments */
-	abstract protected function _(string$n,array$a):string;
+	abstract protected function _(string$n,...$a):string;
 }
 
 #Not necessary here, since class name equals filename

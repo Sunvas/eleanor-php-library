@@ -317,7 +317,7 @@ class MySQL extends \Eleanor\Basic
 	function In(array$a,bool$not=false):string
 	{
 		if(count($a)==1)
-			return($not ? '!' : '').'='.$this->Escape(\array_first($a));
+			return($not ? '!=' : '=').$this->Escape(\array_first($a));
 
 		#PHP 8.6
 		$in=\join(',',\array_map($this->Escape(...),$a));

@@ -85,22 +85,28 @@ enum Template_Type
 }
 
 /** Шаблонизатор */
-class Template extends \Eleanor\Abstracts\Append
+class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 {
 	/** Extension of processed files, must start with . */
 	const string EXT='.php';
 
-	public array
-		/** @var array $default Default variables being passed to all templates.*/
-		$default=[],
+	/** @var array $queue Template sources to load. Values appended via $T[]. Accepted values are:
+	 * string as paths to folder with files;
+	 * string as paths to file returning array or object;
+	 * object;
+	 * array; */
+	protected(set) array $queue=[];
 
-		/** @var array $queue Queue to load (array works better than SplDoublyLinkedList). Accepted:
-		 * paths to folders with files;
-		 * paths to files returning array;
-		 * paths to files returning object;
-		 * objects;
-		 * arrays; */
-		$queue=[];
+	/** @var bool Flag allowing appending results to storage property */
+	protected bool $append=true;
+
+	/** @var Template $content Accessing object though content property disables appending and passes content of storage as 'content' variable to the next template */
+	public Template $content {
+		get{
+			$this->append=false;
+			return $this;
+		}
+	}
 
 	/** @var array $loaded Loaded templates [type, contents] */
 	protected array $loaded=[];
@@ -108,10 +114,12 @@ class Template extends \Eleanor\Abstracts\Append
 	/** @var array Property names that should become references to the original properties after cloning objects */
 	protected static array $linking=['default','queue','loaded'];
 
-	/** @param array|string $queue Queue to load */
-	function __construct(array|string$queue=[])
+	/** @param array|string $queue See description above
+	 * @var array $default Default variables being passed to all templates. Are set via ArrayAccess offsetSet */
+	function __construct(array|string$queue=[],protected(set) array $default=[])
 	{
 		$this->queue=(array)$queue;
+
 		parent::__construct();
 	}
 
@@ -120,7 +128,7 @@ class Template extends \Eleanor\Abstracts\Append
 	 * @param array $a Arguments
 	 * @return string
 	 * @throws E */
-	protected function _(string$n,array$a=[]):string
+	protected function _(string$n,...$a):string
 	{
 		while($this->queue)
 		{
@@ -161,25 +169,72 @@ class Template extends \Eleanor\Abstracts\Append
 			}
 		}
 
-		#For the template on directory, the only parameter passed as an array is extracted as variables. This allows to pass &links.
-		$extract=isset($a[0]) && \count($a)==1 && \is_array($a[0]);
+		$vars=$this->default;
 
-		#If templates are not appended, flush storage to content
-		$flush=$this->append ? [] : ['content'=>$this->storage];
+		#Flushing storage as content variable
+		if(!$this->append)
+		{
+			$vars['content']=$this->storage;
+
+			$this->storage='';
+			$this->append=true;
+		}
 
 		#Searching for the template
 		foreach($this->loaded as [$Type,$item])
 		{
 			if($Type===Template_Type::dir)
-				$result=$Type->Get($n,$flush+($extract ? $a[0] : $a)+$this->default,static::EXT,...$item);
+			{
+				#The only parameter passed as an array to the directory template is extracted as variables. This allows to pass &links.
+				$extract??=isset($a[0]) && \count($a)==1 && \is_array($a[0]);
+
+				$result=$Type->Get($n,($extract ? $a[0] : $a)+$vars,static::EXT,...$item);
+			}
 			else
-				$result=$Type->Get($n,$flush+$a+$this->default,$item);
+				$result=$Type->Get($n,$a+$vars,$item);
 
 			if(null!==$result)
 				return$result;
 		}
 
-		throw new E("Template '{$n}' was not found",E::PHP,...BugFileLine($this));
+		throw new E("Template '{$n}' not found",E::PHP,...BugFileLine($this));
+	}
+
+	/** Set default variable or append template source to the queue
+	 * @param ?string $offset Key
+	 * @param mixed $value Value */
+	function offsetSet(mixed$offset,mixed$value): void
+	{
+		if($offset===null)
+			$this->queue[]=$value;
+		else
+			$this->default[$offset]=$value;
+	}
+
+	/** Checking availability of default variable
+	 * @param string $offset Key
+	 * @return bool */
+	function offsetExists(mixed$offset): bool
+	{
+		return isset($this->default[$offset]);
+	}
+
+	/** Unset default variable
+	 * @param string $offset Key */
+	function offsetUnset(mixed$offset): void
+	{
+		unset($this->default[$offset]);
+	}
+
+	/** Get default variable value. Undefined variables will return null, allowing you to create multidimensional arrays in a single line.
+	 * @param string $offset Key
+	 * @return mixed */
+	function &offsetGet(mixed$offset):mixed
+	{
+		if(!isset($this->default[$offset]))
+			$this->default[$offset]=null;
+
+		return $this->default[$offset];
 	}
 }
 

@@ -10,11 +10,11 @@ class Files extends \Eleanor\Basic
 	 * @param string $destination
 	 * @param ?string $orig_dest Ignore. For internal use
 	 * @return bool */
-	static function Copy(string $source, string $destination, ?string $orig_dest=null):bool
+	static function Copy(string$source,string$destination,?string$orig_dest=null):bool
 	{
 		$orig_dest??=$destination;
 
-		#Preving coping itself into itself
+		#Prevention copying into itself
 		if($source=='' or !\file_exists($source) or \str_starts_with($source,$orig_dest))
 			return false;
 
@@ -87,7 +87,7 @@ class Files extends \Eleanor\Basic
 		}
 		else
 		{
-			//If we're trying to write more than written
+			#If we're trying to write more than written
 			if($diff>0)
 			{
 				$step=1;
@@ -95,7 +95,7 @@ class Files extends \Eleanor\Basic
 
 				do
 				{
-					#Понемногу перемещаем содержимое файла, расширяя зону вставки
+					#Gradually move the contents of the file, expanding the insertion area.
 					$i=\max($size-$buf*$step++,$limiter);
 
 					\fseek($stream,$i);

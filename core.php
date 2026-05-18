@@ -2,9 +2,8 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor;
 
-use Eleanor\Classes\E,
-	Eleanor\Classes\Output,
-	Eleanor\Traits\FL4E;
+use Eleanor\Classes\{E, Output};
+use Eleanor\Traits\FL4E;
 
 /** Encoding of Eleanor's files */
 const CHARSET = 'UTF-8';
@@ -149,7 +148,8 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 		Output::JSON=>'json',
 		default=>'text'
 	};
-	$out=(string)$Tpl->{$type}($error,$code,$file,$line,$hint,$payload);
+
+	$out=$Tpl($type,$error,$code,$file,$line,$hint,$payload);
 
 	\ob_clean();
 	Output::SendHeaders(Library::$bsodtype,503);
@@ -288,16 +288,23 @@ abstract class Basic
  * B::$o->Say(); //Hi
  * echo get_class(B::$o); //A
  */
-class Assign extends Basic
+class Assign extends Basic implements \ArrayAccess
 {
+	/** @var ?array Parameters for Creator */
+	public ?array $args;
+
 	/** @param ?object &$link Reference where the object will be written to when created
-	 * @param \Closure $Creator The function to return the object */
-	function __construct(protected ?object &$link,protected \Closure$Creator){}
+	 * @param \Closure $Creator The function to return the object
+	 * @param mixed ...$args */
+	function __construct(protected ?object &$link,protected \Closure$Creator,...$args)
+	{
+		$this->args=$args ?: null;
+	}
 
 	/** Creating object */
-	protected function Create():void
+	function Create():void
 	{
-		$this->link=\call_user_func($this->Creator);
+		$this->link=\call_user_func_array($this->Creator,$this->args ?? []);
 	}
 
 	/** Syntactic sugar for binding a variable to a future object */
@@ -323,6 +330,27 @@ class Assign extends Basic
 	{
 		$this->Create();
 		return \call_user_func_array([$this->link,$n],$a);
+	}
+
+	function offsetSet(...$a):void
+	{
+		$this->__call(__FUNCTION__,$a);
+	}
+
+	function offsetExists(...$a):bool
+	{
+		return $this->__call(__FUNCTION__,$a);
+	}
+
+	function offsetUnset(...$a):void
+	{
+		$this->__call(__FUNCTION__,$a);
+	}
+
+	function &offsetGet(mixed$offset):mixed
+	{
+		$this->Create();
+		return $this->link[$offset];
 	}
 }
 
