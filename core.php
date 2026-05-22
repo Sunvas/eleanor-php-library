@@ -10,18 +10,21 @@ const CHARSET = 'UTF-8';
 
 \mb_internal_encoding(CHARSET);
 
-/** Site path, relative to the domain */
+/** Base site path relative to the domain root with trailing slash */
 \defined('Eleanor\SITEDIR')||\define('Eleanor\SITEDIR',\rtrim(\dirname($_SERVER['PHP_SELF'] ?? '/'),'/\\').'/');
 
-/** Http protocol */
+/** Current request protocol prefix (http:// or https://) */
 \defined('Eleanor\PROTOCOL')||\define('Eleanor\PROTOCOL',($_SERVER['HTTPS'] ?? '')=='on' ? 'https://' : 'http://');
 
-/** The starting point of internal time is used to reduce used timestamps */
+/** Internal base timestamp used for compact relative time storage */
 \defined('Eleanor\BASE_TIME')||\define('Eleanor\BASE_TIME',\mktime(0,0,0,1,1,2025));
 
-/** Obtaining path to file and line number where error has happened
- * @param null|string|object $filter null - previous step, object - last mention, class - first non-mention
- * @return array ['file'=>,'line'=>N] */
+/** Get file path and line number where the error occurred.
+ * @param null|string|object $filter Stack trace filter:
+ *     - null: use previous stack frame
+ *     - object: use last mention of object class
+ *     - string: use first frame outside specified class
+ * @return array ['file' => string, 'line' => int] */
 function BugFileLine(null|string|object$filter=null):array
 {
 	$iso=\is_object($filter);
@@ -81,17 +84,18 @@ function BugFileLine(null|string|object$filter=null):array
 	return[];
 }
 
-/** Safe including of the file: in case of ParseError information will be put into log
- * @param string $file Full path to the file
- * @param array $vars Variables for a scope of file
- * @throws E
- * @return mixed */
+/** Safely include PHP file with custom scope variables.
+ * Output buffering is automatically handled and exceptions are rethrown after cleanup.
+ * @param string $file Absolute file path
+ * @param array $vars Variables extracted into file scope. Invalid variable names are prefixed with "var".
+ * @return mixed
+ * @throws E */
 function AwareInclude(string$file,array$vars=[]):mixed
 {
 	if(!\is_file($file))
 		throw new E('Missing file '.(\str_starts_with($file,SITEDIR) ? \substr($file,\strlen(SITEDIR)) : $file),E::SYSTEM);
 
-	//Preserving $file variable
+	#Store include path in an unnamed variable so extract(EXTR_OVERWRITE) cannot replace it with a user-supplied variable.
 	${''}=$file;
 
 	if($vars)
@@ -113,37 +117,39 @@ function AwareInclude(string$file,array$vars=[]):mixed
 	return$r===null ? true : $r;
 }
 
-/** “Quiet” code execution when error display is disabled
- * @param callable $Func
- * @return mixed */
-function QuietExecution(callable$Func):mixed
+/** Execute callback quietly with temporary error suppression.
+ * PHP errors are ignored and thrown exceptions are converted to null.
+ * @param callable $Func Callback to execute
+ * @param mixed ...$params Arguments passed to the callback
+ * @return mixed Callback return value or null on exception */
+function QuietExecution(callable$Func,...$params):mixed
 {
 	\set_error_handler(fn()=>null);
 
-	try
-	{
-		$ret=\call_user_func($Func);
+	try{
+		return \call_user_func_array($Func,$params);
 	}
-	catch(\Throwable)
-	{
-		$ret=null;
+	catch(\Throwable){
+		return null;
 	}
-
-	\restore_error_handler();
-	return$ret;
+	finally{
+		\restore_error_handler();
+	}
 }
 
-/** Eleanor's Blue Screen of Death
+/** Eleanor's Blue Screen of Death.
+ * Displays fatal error information and terminates script execution.
  * @param string $error Error message
  * @param int|string $code Error code
- * @param ?string $file Path to file
- * @param ?int $line Line number
- * @param ?string $hint Hint for fixing
- * @param ?array $payload Data that led to crash */
+ * @param ?string $file Source file path
+ * @param ?int $line Source line number
+ * @param ?string $hint Suggested fix or additional diagnostic hint
+ * @param ?array $payload Data associated with the crash
+ * @return never */
 function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=null,?array$payload=null):never
 {
 	$Tpl=new Classes\Template(Library::$bsod);
-	$type=match(Library::$bsodtype){
+	$type=Library::$cli ? 'cli' : match(Library::$bsodtype){
 		Output::HTML=>'html',
 		Output::JSON=>'json',
 		default=>'text'
@@ -152,15 +158,21 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 	$out=$Tpl($type,$error,$code,$file,$line,$hint,$payload);
 
 	\ob_clean();
-	Output::SendHeaders(Library::$bsodtype,503);
 
+	if(Library::$cli)
+	{
+		\fwrite(\STDERR, $out);
+		die;
+	}
+
+	Output::SendHeaders(Library::$bsodtype,503);
 	die($out);
 }
 
-/** Class autoloader
- * @param string $c Classname
- * @param string $dir Working directoryu
- * @param string $ns NameSpace as filter
+/** Namespace-aware class autoloader with support for class aliases, lowercase filenames and kebab-case filenames.
+ * @param string $c Fully qualified class name
+ * @param string $dir Base directory for class lookup
+ * @param string $ns Namespace filter
  * @throws E */
 function Autoloader(string$c,string$dir=__DIR__,string$ns=__NAMESPACE__):void
 {
@@ -213,19 +225,18 @@ function Autoloader(string$c,string$dir=__DIR__,string$ns=__NAMESPACE__):void
 	}
 }
 
-#Autoloader loads only files directly related to Eleanor PHP Library
+#Autoloader loads only files from Eleanor PHP Library
 \spl_autoload_register(Autoloader(...));
 
-/** Basic class from which all others classes are recommended to be extended: it contains the necessary hooks that make
- * it easier to find and fix bugs */
+/** Base class recommended for inheritance by all framework classes.
+ * Provides common debugging and error-handling hooks that simplify bug detection and diagnostics. */
 abstract class Basic
 {
-	/** Handling calls of non-existent static methods.
-	 * This method may seem strange: in case you call a non-existent static method, a Fatal error will be generated,
-	 * which can be caught and logged. Idea of method is convenience in a successor class: when __callStatic is not
-	 * designed to execute everything it can pass "excess" execution to this method.
-	 * @param string $n Name of a non-existent method
-	 * @param array $a arguments for
+	/** Handle calls to undefined static methods.
+	 * Intended as fallback helper for descendant implementations of __callStatic(). Allows subclasses to delegate
+	 * unsupported calls while preserving detailed diagnostic information.
+	 * @param string $n Undefined method name
+	 * @param array $a Method arguments
 	 * @throws \BadMethodCallException */
 	static function __callStatic(string$n,array$a)
 	{
@@ -235,13 +246,13 @@ abstract class Basic
 		) extends \BadMethodCallException{ use FL4E; };
 	}
 
-	/** Handling calls of non-existent methods.
-	 * This method may seem strange: in case you call a non-existent static method, a Fatal error will be generated,
-	 * which can be caught and logged. Idea of method is convenience in a successor class: when __call is not
-	 * designed to execute everything it can pass "excess" execution to this method.
-	 * @param string $n Name of a non-existent method
-	 * @param array $a Array of arguments for called method
-	 * @return mixed *@throws \BadMethodCallException */
+	/** Handle calls to undefined methods.
+	 * If a property with the same name exists and contains an invokable object, the object is executed instead.
+	 * Intended as fallback helper for descendant implementations of __call().
+	 * @param string $n Undefined method name
+	 * @param array $a Method arguments
+	 * @return mixed
+	 * @throws \BadMethodCallException */
 	function __call(string$n,array$a):mixed
 	{
 		if(\property_exists($this,$n) and \is_object($this->$n) and \method_exists($this->$n,'__invoke'))
@@ -253,11 +264,10 @@ abstract class Basic
 		) extends \BadMethodCallException{ use FL4E; };
 	}
 
-	/** Handling of getting non-existent properties
-	 * This method may seem strange: in case you try to get a non-existent property, a Notice will be generated,
-	 * which can be caught and logged. Idea of method is convenience in a successor class: when __get is not
-	 * designed to provide all requested properties it can pass getting of non-existent properties to this method.
-	 * @param string $n Name of requested property
+	/** Handle access to undefined properties.
+	 * Intended as fallback helper for descendant implementations of __get() to provide detailed diagnostic information
+	 * for unknown property access.
+	 * @param string $n Requested property name
 	 * @return mixed
 	 * @throws E */
 	function __get(string$n):mixed
@@ -266,53 +276,37 @@ abstract class Basic
 	}
 }
 
-/** Assign On Demand - delayed object creation. Eleanor's own realization of ReflectionClass::newLazyProxy which author
- * finds too clunky. Quite often there are situations when an object needs to be created without an explicit need for it.
- * As a rule, in CMS object \MySQLi is created at the early stage (during initialization), and then internal components
- * use it as needed. But on plain sites, not every page is interacting with the database, so there is no point in
- * wasting server resources, especially on shared hosting. This class allows you to define an object constructor that
- * will create an object when it really needed. Example:
- * class A
- * {
- *    function Say(){ echo 'Hi'; }
- * }
- *
- * class B
- * {
- *    static null|Assign|A $o;
- * }
- *
- * Assign::For(B::$o,fn()=>new A);
- *
- * echo get_class(B::$o); //Assign
- * B::$o->Say(); //Hi
- * echo get_class(B::$o); //A
- */
+/** Assign on demand: lazy object proxy with reference replacement.
+ * Delays object creation until first usage. Once created, the proxy replaces itself in the original referenced variable
+ * with the real object instance. Useful for expensive services that may not be needed during every request. */
 class Assign extends Basic implements \ArrayAccess
 {
-	/** @var ?array Parameters for Creator */
+	/** @var ?array Arguments passed to the creator closure */
 	public ?array $args;
 
-	/** @param ?object &$link Reference where the object will be written to when created
-	 * @param \Closure $Creator The function to return the object
-	 * @param mixed ...$args */
-	function __construct(protected ?object &$link,protected \Closure$Creator,...$args)
+	/** @param ?object &$link Reference that will receive the created object
+	 * @param \Closure $Creator Closure that creates and returns the target object
+	 * @param mixed ...$args Arguments passed to the creator closure */
+	function __construct(protected ?object&$link,protected \Closure$Creator,...$args)
 	{
 		$this->args=$args ?: null;
 	}
 
-	/** Creating object */
+	/** Create target object and replace proxy reference with it */
 	function Create():void
 	{
 		$this->link=\call_user_func_array($this->Creator,$this->args ?? []);
 	}
 
-	/** Syntactic sugar for binding a variable to a future object */
-	static function For(?object &$link,\Closure$Creator):void
+	/** Bind variable to lazy object creator */
+	static function Bind(?object&$link,\Closure$Creator,...$args):void
 	{
-		$link=new static($link,$Creator);
+		$link=new static($link,$Creator,...$args);
 	}
 
+	/** Create target object and read its property by reference.
+	 * @param string $n Property name
+	 * @return mixed */
 	function &__get(string$n):mixed
 	{
 		$this->Create();
@@ -326,6 +320,10 @@ class Assign extends Basic implements \ArrayAccess
 		return$link;
 	}
 
+	/** Create target object and call its method.
+	 * @param string $n Method name
+	 * @param array $a Method arguments
+	 * @return mixed */
 	function __call(string$n,array$a):mixed
 	{
 		$this->Create();
@@ -354,75 +352,81 @@ class Assign extends Basic implements \ArrayAccess
 	}
 }
 
-/** Main class of Eleanor PHP Library */
+/** Core class of Eleanor PHP Library.
+ * Provides shared runtime settings, logging configuration, error/exception handler storage, and lazy object creation. */
 #[\AllowDynamicProperties]
 class Library extends Basic
 {
 	static
-		/** @var ?callable $old_error_handler Previous error handler */
+		/** @var ?callable Previous error handler */
 		$old_error_handler,
 
-		/** @var ?callable $old_exception_handler Previous exception handler */
+		/** @var ?callable Previous exception handler */
 		$old_exception_handler,
 
-		/** @var callable $log_filter Selective logging filter (if $log_all_errors and $log_all_exceptions are disabled) */
+		/** @var callable Selective logging filter used when full error/exception logging is disabled */
 		$log_filter;
 
 	static bool
-		/** @var bool $log_all_errors Flag to enable logging of all errors */
+		/** @var bool Whether the script is running in CLI mode */
+		$cli=false,
+
+		/** @var bool Whether all errors should be logged */
 		$log_all_errors=true,
 
-		/** @var bool $log_all_exceptions Flag to enable logging of all exceptions */
+		/** @var bool Whether all exceptions should be logged */
 		$log_all_exceptions=true,
 
-		/** @var bool $logs_enabled Flag to enable logging */
+		/** @var bool Whether logging is enabled */
 		$logs_enabled=true;
 
 	static string
-		/** @var string $logs Path to the directory where logs will be placed */
+		/** @var string Directory path where log files are stored */
 		$logs,
 
-		/** @var string $bsod Path to screen of death file */
+		/** @var string Path to the Blue Screen of Death template */
 		$bsod=__DIR__.'/bsod.php',
 
-		/** @var string $bsodtype Type of screen of death */
+		/** @var string MIME type of the Blue Screen of Death response */
 		$bsodtype='text/html';
 
-	/** @var array $creators A set of creators for future objects */
-	protected array $creators=[];
+	/** @var array Registered factories for lazy object creation */
+	protected(set) array $creators=[];
 
-	/** Defining a constructor for creating shared objects within this object-storage
+	/** Register shared object factory
 	 * @param string $n Property name
-	 * @param array $a Parameters of the constructor or \Closure
-	 * @return mixed */
-	function __call(string$n,array$a):mixed
+	 * @param array $a Factory definition where:
+	 *     - $a[0] is a \Closure
+	 *     - remaining elements are closure arguments
+	 * @throws E
+	 * @return static */
+	function __call(string$n,array$a):static
 	{
+		if(\count($a)<1 or (!$a[0] instanceof \Closure))
+			throw new E("First argument for '$n' constructor should be \\Closure",E::PHP,...BugFileLine($this));
+
 		$this->creators[$n]=$a;
 		return$this;
 	}
 
-	/** Obtaining object
+	/** Lazily load and return class object by property name.
 	 * @throws E */
 	function __get(string$n):mixed
 	{
 		return$this->$n=$this($n);
 	}
 
-	/** One-time creation of an object according to a predefined constructor
-	 * @param string $n Имя класса
+	/** Create and return object instance by class name.
+	 * Uses registered factory if available; otherwise attempts to load class file from the classes directory.
+	 * @param string $n Class name
+	 * @param string $dir Base directory for class lookup
 	 * @throws E */
 	function __invoke(string$n,string$dir=__DIR__):mixed
 	{
 		$creator=[];
 
 		if(isset($this->creators[$n]))
-		{
-			$creator=$this->creators[$n];
-
-			//Object creating via \Closure
-			if(\count($creator)==1 and $creator[0] instanceof \Closure)
-				return \call_user_func($creator[0]);
-		}
+			return \call_user_func(...$this->creators[$n]);
 
 		$lc=\strtolower($n);#LowerCase
 		$path=$dir."/classes/{$lc}.php";
@@ -445,6 +449,9 @@ class Library extends Basic
 		{
 			$class=(fn()=>require$path)();
 
+			if(!\is_string($class))
+				$class=__NAMESPACE__.'\\'.$n;
+
 			if(\class_exists($class,false))
 				return new $class($creator);
 		}
@@ -453,13 +460,26 @@ class Library extends Basic
 	}
 }
 
-#By default, all logs are stored in the ./log folder of the site. It is better to deny access to this folder.
+if(php_sapi_name()==='cli')
+{
+	Library::$cli=true;
+	Library::$bsodtype='cli';
+
+	if(!$_SERVER['DOCUMENT_ROOT'])
+		$_SERVER['DOCUMENT_ROOT']=\getcwd();
+}
+
+#By default, logs are stored in the site's ./logs directory. Web access to this directory should be restricted.
 Library::$logs=\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/logs/';
 
-#Filter receives path to file with error/exception as first parameter and allows or disallows logging.
+#The filter receives the source file path and decides whether the error/exception should be logged.
 Library::$log_filter=fn($f)=>\str_starts_with($f,__DIR__.\DIRECTORY_SEPARATOR) || \str_starts_with($f,\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR);
 
 Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context=null){
+	#Skip @ suppressed errors
+	if(!(\error_reporting() & $c))
+		return;
+
 	if(!Library::$log_all_errors and !\call_user_func(Library::$log_filter,$f,$c))
 	{
 		if(Library::$old_error_handler)
@@ -470,13 +490,13 @@ Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context
 
 	if($c and Library::$logs_enabled and \class_exists('\Eleanor\Classes\E'))#
 	{
-		if($c & E_ERROR)
+		if($c & \E_ERROR)
 			$type='Error ';
-		elseif($c & E_WARNING)
+		elseif($c & \E_WARNING)
 			$type='Warning ';
-		elseif($c & E_NOTICE)
+		elseif($c & \E_NOTICE)
 			$type='Notice ';
-		elseif($c & E_PARSE)
+		elseif($c & \E_PARSE)
 			$type='Parse error ';
 		else
 			$type='';
@@ -484,7 +504,7 @@ Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context
 		new E($type.$error,E::PHP,file:$f,line:$l,input:$context)->Log();
 
 		#Display errors only if they are related to php code parsing
-		if($c & E_PARSE)
+		if($c & \E_PARSE)
 			BSOD($type.$error,$c,$f,$l,null,$context);
 	}
 },E_ALL);
@@ -514,6 +534,6 @@ Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E){
 	BSOD($m,$c,$f,$l,\property_exists($E,'hint') ? $E->hint : null,\property_exists($E,'input') ? $E->input : null);
 });
 
-#Поддержка IDN
-\define('Eleanor\PUNYCODE',\filter_var($_SERVER['HTTP_HOST'] ?? '',FILTER_VALIDATE_DOMAIN,FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
+#IDN support
+\define('Eleanor\PUNYCODE',\filter_var($_SERVER['HTTP_HOST'] ?? '',\FILTER_VALIDATE_DOMAIN,\FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
 \define('Eleanor\DOMAIN',\str_starts_with(PUNYCODE,'xn--') ? Classes\Punycode::Domain(PUNYCODE,false) : PUNYCODE);
