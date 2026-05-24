@@ -19,7 +19,7 @@ const CHARSET = 'UTF-8';
 /** Internal base timestamp used for compact relative time storage */
 \defined('Eleanor\BASE_TIME')||\define('Eleanor\BASE_TIME',\mktime(0,0,0,1,1,2025));
 
-/** Get file path and line number where the error occurred.
+/** Get the file path and line number where the error occurred.
  * @param null|string|object $filter Stack trace filter:
  *     - null: use previous stack frame
  *     - object: use last mention of object class
@@ -84,7 +84,7 @@ function BugFileLine(null|string|object$filter=null):array
 	return[];
 }
 
-/** Safely include PHP file with custom scope variables.
+/** Safely include the PHP file with custom scope variables.
  * Output buffering is automatically handled and exceptions are rethrown after cleanup.
  * @param string $file Absolute file path
  * @param array $vars Variables extracted into file scope. Invalid variable names are prefixed with "var".
@@ -95,7 +95,7 @@ function AwareInclude(string$file,array$vars=[]):mixed
 	if(!\is_file($file))
 		throw new E('Missing file '.(\str_starts_with($file,SITEDIR) ? \substr($file,\strlen(SITEDIR)) : $file),E::SYSTEM);
 
-	#Store include path in an unnamed variable so extract(EXTR_OVERWRITE) cannot replace it with a user-supplied variable.
+	#Storing include path in the unnamed variable so extract(EXTR_OVERWRITE) cannot replace it with a user-supplied variable.
 	${''}=$file;
 
 	if($vars)
@@ -169,7 +169,7 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 	die($out);
 }
 
-/** Namespace-aware class autoloader with support for class aliases, lowercase filenames and kebab-case filenames.
+/** Namespace-aware class autoloader with support for class aliases, lowercase filenames, and kebab-case filenames.
  * @param string $c Fully qualified class name
  * @param string $dir Base directory for class lookup
  * @param string $ns Namespace filter
@@ -232,8 +232,8 @@ function Autoloader(string$c,string$dir=__DIR__,string$ns=__NAMESPACE__):void
  * Provides common debugging and error-handling hooks that simplify bug detection and diagnostics. */
 abstract class Basic
 {
-	/** Handle calls to undefined static methods.
-	 * Intended as fallback helper for descendant implementations of __callStatic(). Allows subclasses to delegate
+	/** Handle calls undefined static methods.
+	 * Intended as the fallback helper for descendant implementations of __callStatic(). Allows subclasses to delegate
 	 * unsupported calls while preserving detailed diagnostic information.
 	 * @param string $n Undefined method name
 	 * @param array $a Method arguments
@@ -248,7 +248,7 @@ abstract class Basic
 
 	/** Handle calls to undefined methods.
 	 * If a property with the same name exists and contains an invokable object, the object is executed instead.
-	 * Intended as fallback helper for descendant implementations of __call().
+	 * Intended as the fallback helper for descendant implementations of __call().
 	 * @param string $n Undefined method name
 	 * @param array $a Method arguments
 	 * @return mixed
@@ -265,7 +265,7 @@ abstract class Basic
 	}
 
 	/** Handle access to undefined properties.
-	 * Intended as fallback helper for descendant implementations of __get() to provide detailed diagnostic information
+	 * Intended as the fallback helper for descendant implementations of __get() to provide detailed diagnostic information
 	 * for unknown property access.
 	 * @param string $n Requested property name
 	 * @return mixed
@@ -292,19 +292,19 @@ class Assign extends Basic implements \ArrayAccess
 		$this->args=$args ?: null;
 	}
 
-	/** Create target object and replace proxy reference with it */
+	/** Create the target object and replace the proxy reference with it */
 	function Create():void
 	{
 		$this->link=\call_user_func_array($this->Creator,$this->args ?? []);
 	}
 
-	/** Bind variable to lazy object creator */
+	/** Bind the variable to the lazy object creator */
 	static function Bind(?object&$link,\Closure$Creator,...$args):void
 	{
 		$link=new static($link,$Creator,...$args);
 	}
 
-	/** Create target object and read its property by reference.
+	/** Create the target object and read its property by reference.
 	 * @param string $n Property name
 	 * @return mixed */
 	function &__get(string$n):mixed
@@ -320,7 +320,7 @@ class Assign extends Basic implements \ArrayAccess
 		return$link;
 	}
 
-	/** Create target object and call its method.
+	/** Create the target object and call its method.
 	 * @param string $n Method name
 	 * @param array $a Method arguments
 	 * @return mixed */
@@ -393,7 +393,7 @@ class Library extends Basic
 	/** @var array Registered factories for lazy object creation */
 	protected(set) array $creators=[];
 
-	/** Register shared object factory
+	/** Register a shared object factory
 	 * @param string $n Property name
 	 * @param array $a Factory definition where:
 	 *     - $a[0] is a \Closure
@@ -409,15 +409,15 @@ class Library extends Basic
 		return$this;
 	}
 
-	/** Lazily load and return class object by property name.
+	/** Lazily load and return the class object by property name.
 	 * @throws E */
 	function __get(string$n):mixed
 	{
 		return$this->$n=$this($n);
 	}
 
-	/** Create and return object instance by class name.
-	 * Uses registered factory if available; otherwise attempts to load class file from the classes directory.
+	/** Create and return the object instance by class name.
+	 * Uses registered factory if available; otherwise attempts to load the class file from the classes' directory.
 	 * @param string $n Class name
 	 * @param string $dir Base directory for class lookup
 	 * @throws E */
@@ -429,7 +429,7 @@ class Library extends Basic
 			return \call_user_func(...$this->creators[$n]);
 
 		$lc=\strtolower($n);#LowerCase
-		$path=$dir."/classes/{$lc}.php";
+		$path=$dir."/classes/$lc.php";
 		$exists=\is_file($path);
 
 		#Support of kebab-case filenames
@@ -475,7 +475,7 @@ Library::$logs=\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/logs/';
 #The filter receives the source file path and decides whether the error/exception should be logged.
 Library::$log_filter=fn($f)=>\str_starts_with($f,__DIR__.\DIRECTORY_SEPARATOR) || \str_starts_with($f,\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR);
 
-Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context=null){
+Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context=null):void{
 	#Skip @ suppressed errors
 	if(!(\error_reporting() & $c))
 		return;
@@ -488,7 +488,7 @@ Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context
 		return;
 	}
 
-	if($c and Library::$logs_enabled and \class_exists('\Eleanor\Classes\E'))#
+	if(Library::$logs_enabled and \class_exists('\Eleanor\Classes\E'))
 	{
 		if($c & \E_ERROR)
 			$type='Error ';
@@ -507,9 +507,9 @@ Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context
 		if($c & \E_PARSE)
 			BSOD($type.$error,$c,$f,$l,null,$context);
 	}
-},E_ALL);
+});
 
-Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E){
+Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E):void{
 	$f=$E->getFile();
 	$l=$E->getLine();
 	$c=$E->getCode();

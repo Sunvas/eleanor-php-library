@@ -5,178 +5,196 @@ namespace Eleanor\Abstracts;
 use Eleanor\Classes\Files,
 	Eleanor\Interfaces\Loggable;
 
-/** The base of library exceptions: basic methods for logging them */
+/** Base class for library exceptions with built-in logging support. */
 abstract class E extends \Exception implements Loggable
 {
-	/** Maximum size of the file, after reaching it file will be compressed */
-	const int SIZE_TO_COMPRESS=2097152;#2 Mb
+	const int
+		/** Maximum log file size before automatic compression */
+		SIZE_TO_COMPRESS=2097152,# 2 MB
 
-	/** For BSOD */
+		/** Chunk size for compressing file operations */
+		CHUNK_SIZE=1024*128;# 128 KB
+
+	/** String representation used by BSOD output */
 	function __toString():string
 	{
 		return$this->message;
 	}
 
-	/** Logging */
-	abstract function Log();
+	/** Write exception information to logs */
+	abstract function Log():void;
 
-	/** Entry in a .log file
-	 * @param array $data The accumulated data of this exception
-	 * @return string Item for log file */
+	/** Build textual log entry for this exception.
+	 * @param array $data Accumulated exception data
+	 * @return string Formatted log entry */
 	abstract protected function LogItem(array&$data):string;
 
-	/** Writing to a log file. Errors log consists of 2 files: *.log и *.json. The first one is a text file to be
-	 * opened in any suitable way. The second one contains data for grouping identical items.
-	 * @param string $path Path to the file and its name without extension (added by method)
-	 * @param string $id Unique id of item
+
+	/** Write exception data to log files. Logging uses three files:
+	 *     - *.log Human-readable text log
+	 *     - *.json Structured data used for grouping identical entries
+	 *     - *.lock File lock for concurrent access
+	 * @param string $path Log file path without extension
+	 * @param string $id Unique log entry identifier
 	 * @return bool */
 	protected function LogWriter(string$path,string$id):bool
 	{
 		$dir=\dirname($path);
 
-		if(!\is_dir($dir))
-			\mkdir($dir,0744,true);
+		if(!\is_dir($dir) and !\mkdir($dir,0755,true))
+			return!\trigger_error("Directory $dir is write-protected!",\E_USER_WARNING);
 
 		$path2log=$path.'.log';
 		$path2json=$path.'.json';
+		$path2lock=$path.'.lock';
+
+		$flh=Files::LockFile($path2lock);
+
+		if($flh===false)
+			return false;
 
 		$is_log=\is_file($path2log);
-		$is_json=\is_file($path2json);
+		$is_json=$is_log && \is_file($path2json);
 
 		if($is_log and !\is_writeable($path2log) or !$is_log and !\is_writeable(\dirname($path2log)))
-			return \trigger_error("File {$path2log} is write-protected!",E_USER_WARNING);
+		{
+			\fclose($flh);
+			return!\trigger_error("File $path2log is write-protected!",\E_USER_WARNING);
+		}
 
-		//Архивация .log файла и удаление json файла (если размер превысил порог, значит его никто не читает)
+		# Compress oversized .log files and remove related .json metadata. Large archived logs are assumed to be inactive.
 		if($is_log and \filesize($path2log)>static::SIZE_TO_COMPRESS)
 		{
-			if(static::CompressFile($path2log,\substr_replace($path2log,'_'.\date('Y-m-d_H-i-s'),\strrpos($path2log,'.'),0)))
+			$archive=\substr_replace($path2log,\date('_Y-m-d_H-i-s'),\strrpos($path2log,'.'),0);
+
+			if(static::CompressFile($path2log,$archive))
 			{
 				\unlink($path2log);
 
 				if($is_json)
 					\unlink($path2json);
-			}
 
-			\clearstatcache();
+				$is_log=false;
+				$is_json=false;
+			}
 		}
 
-		$json=$is_json ? \file_get_contents($path2json) : false;
-		$json=$json ? \json_decode($json,true) : [];
+		$json=$is_json ? \file_get_contents($path2json) : '';
+		$corrupted=$json===false;
+		$json=$json ? (array)\json_decode($json,true) : [];
 
-		$exists=isset($json[$id]);
-		$data=$exists ? $json[$id]['d'] : [];
-		$item=$this->LogItem($data);
-
-		if($exists and !isset($json[$id]['o'],$json[$id]['l']))
+		if($corrupted or \json_last_error()!==\JSON_ERROR_NONE)
 		{
-			$exists=false;
+			$salt=\bin2hex(\random_bytes(2));
+			\rename($path2json,$path.".$salt.corrupt");
+		}
 
-			unset($json[$id]);
+		$exists=isset($json[$id][0],$json[$id][1],$json[$id][2]);
+		$size=$is_log ? \filesize($path2log) : 0;
+
+		# Check if the entry fits into the existing log file
+		if($exists)
+		{
+			[$offset,$length]=$json[$id];
+
+			if($offset+$length>$size)
+			{
+				$json=[];
+				$exists=false;
+			}
+		}
+
+		$data=$exists ? $json[$id][2] : [];
+		$item=$this->LogItem($data);
+		$fh=Files::LockFile($path2log,$exists ? 'r+' : 'a');
+
+		if($fh===false)
+		{
+			\fclose($flh);
+
+			return false;
 		}
 
 		if($exists)
 		{
-			$offset=$json[$id]['o'];
-			$length=$json[$id]['l'];
+			$diff=Files::FReplace($fh,$item,$offset,$length);
+			$success=\is_int($diff);
 
-			unset($json[$id]);
-			$size=$is_log ? \filesize($path2log) : 0;
-
-			if($size<$offset+$length)
+			if($success)
 			{
-				$exists=false;
+				$length+=$diff;
 
+				# Moving offsets of all entries after the affected one
 				foreach($json as &$v)
-					if($size<$v['o']+$v['l'])
-						unset($v['o'],$v['l']);
+					if(isset($v[0]) and $v[0]>$offset)
+						$v[0]+=$diff;
+
 				unset($v);
 			}
 		}
-
-		if($exists)
-		{
-			$fh=\fopen($path2log,'rb+');
-
-			if(\flock($fh,LOCK_EX))
-				$diff=Files::FReplace($fh,$item,$offset,$length);
-			else
-			{
-				\fclose($fh);
-				return false;
-			}
-
-			if(\is_int($diff))
-				$length+=$diff;
-
-			foreach($json as &$v)
-				if($v['o']>$offset)
-					$v['o']+=$diff;
-			unset($v);
-		}
 		else
 		{
-			$fh=\fopen($path2log,'a');
+			$offset=$size;
+			$length=\strlen($item);
+			$item.=\PHP_EOL.\PHP_EOL;
 
-			if(\flock($fh,LOCK_EX))
-			{
-				$size=\fstat($fh);
-				$offset=$size['size'];
-				$length=\strlen($item);
-
-				\fwrite($fh,$item.PHP_EOL.PHP_EOL);
-			}
-			else
-			{
-				\fclose($fh);
-
-				return false;
-			}
+			$bytes=\fwrite($fh,$item);
+			$success=$bytes===\strlen($item);
 		}
 
-		$json[$id]=['o'=>$offset,'l'=>$length,'d'=>$data];
+		if($success and \fflush($fh))
+		{
+			$json[$id]=[$offset,$length,$data];
+			$json=\json_encode($json,\JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
 
-		\flock($fh,LOCK_UN);
+			$r=\json_last_error()===\JSON_ERROR_NONE and \file_put_contents($path2json,$json,\LOCK_EX)===\strlen($json);
+		}
+		else
+			$r=false;
+
 		\fclose($fh);
+		\fclose($flh);
 
-		\file_put_contents($path2json,\json_encode($json,JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-
-		return true;
+		return$r;
 	}
 
-	/** Compressing log files for saving disk space
-	 * @param string $source Path to source file
-	 * @param string $dest Path to destination file
+	/** Compress log file to reduce disk usage.
+	 * @param string $source Source file path
+	 * @param string $dest Destination file path
 	 * @return bool */
 	static function CompressFile(string$source,string$dest):bool
 	{
-		if(!\is_file($source) or \file_exists($dest) or !\is_writable(\dirname($dest)))
+		if(!\is_file($source) or !\is_writable(\dirname($dest)))
 			return false;
 
-		$hf=\fopen($source,'r');
-		$r=false;
+		$fh=Files::LockFile($source,'r',\LOCK_SH | \LOCK_NB);
 
-		if(\function_exists('bzopen') and $hbz=\bzopen($dest.'.bz2','w'))
+		if($fh===false)
+			return false;
+
+		if(\function_exists('bzopen') and !\is_file($dest.'.bz2') and $hbz=\bzopen($dest.'.bz2','w'))
 		{
-			while(!\feof($hf))
-				\bzwrite($hbz,\fread($hf,1024*16));
+			while(!\feof($fh))
+				\bzwrite($hbz,\fread($fh,static::CHUNK_SIZE));
 
-			\bzclose($hbz);
-			$r=true;
+			\bzflush($hbz);
+			$r=\bzclose($hbz);
 		}
-		elseif(\function_exists('gzopen') and $hgz=\gzopen($dest.'.gz','w9'))
+		elseif(\function_exists('gzopen') and !\is_file($dest.'.gz') and $hgz=\gzopen($dest.'.gz','w9'))
 		{
-			while(!\feof($hf))
-				\gzwrite($hgz,\fread($hf,1024*64));
+			while(!\feof($fh))
+				\gzwrite($hgz,\fread($fh,static::CHUNK_SIZE));
 
-			\gzclose($hgz);
-			$r=true;
+			$r=\gzclose($hgz);
 		}
+		else
+			$r=false;
 
-		\fclose($hf);
+		\fclose($fh);
 
 		return$r;
 	}
 }
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return E::class;
