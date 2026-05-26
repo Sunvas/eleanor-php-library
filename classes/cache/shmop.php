@@ -2,66 +2,90 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes\Cache;
 
-/** Cache based on Shared Memory Functions */
+use Eleanor\Classes\E;
+use const Eleanor\BASE_TIME;
+
+/** Cache engine based on PHP shared memory functions */
 class Shmop implements \Eleanor\Interfaces\Cache
 {
-	/** @var string One-character string for second argument of \ftok function */
+	/** @var int Permissions for auxiliary cache files */
+	protected const int PERM=0644;
+
+	/** @var string One-character project identifier used by \ftok() */
 	static string $project_id='e';
 
-	/** @param ?string $path Path to folder where auxiliary files are is stored, without trailing slash */
-	function __construct(readonly ?string$path=null){}
+	/** @param string $path Path to the directory for auxiliary files, with trailing slash */
+	function __construct(readonly string$path){}
 
-	/** Storing value
-	 * @param string $k Key
-	 * @param mixed $v Value
-	 * @param int $ttl Time To Live in seconds */
+	/** Store value by cache key
+	 * @param string $k Already sanitized cache key
+	 * @param mixed $v Value to store
+	 * @param int $ttl Time To Live in seconds. When set to 0, the cache never expires */
 	function Put(string$k,mixed$v,int$ttl=86400):void
 	{
-		$f=$this->path."/{$k}.shm";
+		$f=$this->path.$k.'.shm';
 
-		if(!\file_exists($f))
+		if(!\is_file($f) and !\touch($f))
 		{
-			$h=fopen($f,'w');
-			fclose($h);
+			new E('Unable to create cache file',E::SYSTEM,file:$f,line:null)->Log();
+			return;
 		}
 
 		$ipc=\ftok($f,static::$project_id);
 
-		if($ipc<0)
-			goto Err;
+		if($ipc>=0)
+		{
+			# Deleting old shared memory segment
+			$old=@\shmop_open($ipc,'w',0,0);
+			if($old!==false)
+				\shmop_delete($old);
+			unset($old);
 
-		if(\is_string($v))
-			$v.=' ';
+			if(\is_string($v))
+				$v.=' ';
+			else
+				$v=\serialize($v);
+
+			$size=\strlen($v);
+			$h=\shmop_open($ipc,'n',static::PERM,$size);
+		}
 		else
-			$v=\serialize($v);
-
-		$h=\shmop_open($ipc,'c',0644,\strlen($v));
+			$h=false;
 
 		if($h===false)
 		{
-			Err:
 			\unlink($f);
+			new E('Unable to create shared memory block',E::SYSTEM,file:$f,line:null)->Log();
+			return;
 		}
+
+		if($ttl>0)
+			$ttl+=time();
 		else
+			$ttl=BASE_TIME;
+
+		if(\shmop_write($h,$v,0)!==$size or !\touch($f,$ttl))
 		{
-			\shmop_write($h,$v,0);
-			\touch($f,$ttl+\time());
+			\shmop_delete($h);
+			\unlink($f);
+			new E('Unable to store value in shared memory cache',E::SYSTEM,file:$f,line:null)->Log();
 		}
 	}
 
-	/** Retrieving value
-	 * @param string $k Key
-	 * @return mixed */
+	/** Retrieve value by cache key
+	 * @param string $k Already sanitized cache key
+	 * @return mixed Cached value, or null when the key is missing, expired, or unreadable */
 	function Get(string$k):mixed
 	{
-		$f=$this->path."/{$k}.shm";
+		$f=$this->path.$k.'.shm';
 
-		if(!\file_exists($f))
+		if(!\is_file($f))
 			return null;
 
 		$ipc=\ftok($f,static::$project_id);
+		$mtime=@\filemtime($f);
 
-		if(\filemtime($f)<\time() || $ipc<0)
+		if($ipc<0 or $mtime!==BASE_TIME and $mtime<\time())
 		{
 			$this->Delete($k,$ipc);
 			return null;
@@ -70,36 +94,40 @@ class Shmop implements \Eleanor\Interfaces\Cache
 		$h=\shmop_open($ipc,'a',0,0);
 
 		if($h===false)
+		{
+			new E('Unable to load shared memory block',E::SYSTEM,file:$f,line:null)->Log();
 			return null;
+		}
 
-		$s=\shmop_read($h,0,0);
+		$s=\shmop_read($h,0,\shmop_size($h));
 
-		if(\str_starts_with($s,"\0"))
-			return null;
-
-		return \str_ends_with($s,' ') ? \substr($s,0,-1) : \unserialize($s);
+		return \str_ends_with($s,' ') ? \substr($s,0,-1) : \unserialize($s,['allowed_classes'=>false]);
 	}
 
-	/** Removing value
-	 * @param string $k Key */
+	/** Remove value by cache key
+	 * @param string $k Already sanitized cache key
+	 * @param ?int $ipc Optional IPC key, used to avoid recalculating it */
 	function Delete(string$k,?int$ipc=null):void
 	{
-		$f=$this->path."/{$k}.shm";
+		$f=$this->path.$k.'.shm';
 
-		if(!\file_exists($f))
+		if(!\is_file($f))
 			return;
 
 		$ipc??=\ftok($f,static::$project_id);
 
-		if($ipc>0)
+		if($ipc>=0)
 		{
-			$h=@\shmop_open($ipc,'w',0644,0);
+			$h=@\shmop_open($ipc,'w',static::PERM,0);
 
-			if($h!==false)
+			if($h===false)
+				new E('Unable to open shared memory block',E::SYSTEM,file:$f,line:null)->Log();
+			else
 				\shmop_delete($h);
 		}
 
-		\unlink($f);
+		if(!\unlink($f))
+			new E('Unable to delete cache file',E::SYSTEM,file:$f,line:null)->Log();
 	}
 }
 

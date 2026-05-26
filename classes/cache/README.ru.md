@@ -13,7 +13,7 @@
 ```php
 namespace Eleanor\Classes\Cache;
 
-class Serialize implements \Eleanor\Interfaces\Cache
+class Serialized implements \Eleanor\Interfaces\Cache
 {
     // ...
 }
@@ -25,7 +25,7 @@ class Serialize implements \Eleanor\Interfaces\Cache
 
 - `memcache.php` - адаптер для устаревшего расширения `Memcache`;
 - `memcached.php` - адаптер для расширения `Memcached`;
-- `serialize.php` - файловый кэш с сериализованными значениями;
+- `serialized.php` - файловый кэш с сериализованными значениями;
 - `shmop.php` - кэш на основе функций общей памяти.
 
 ## Обязательный интерфейс

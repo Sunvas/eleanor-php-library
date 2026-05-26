@@ -4,112 +4,161 @@ namespace Eleanor\Classes;
 
 use const Eleanor\PUNYCODE;
 
-/** Wrapper for cache engines */
+/** Cache manager with automatic engine selection */
 class Cache extends \Eleanor\Basic
 {
-	/** @var string The path where backup of values will be stored */
+	/** @var string Path to the directory where backup values are stored, with trailing slash */
 	readonly string $backup;
 
-	/** @var \Eleanor\Interfaces\Cache Object of cache engine */
+	/** @var \Eleanor\Interfaces\Cache Cache engine instance  */
 	readonly \Eleanor\Interfaces\Cache $Engine;
 
-	/** @const For "eternal cache" files */
+	/** @const JSON flags used for cache backup files */
 	protected const int JSON=JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
-	/** @param ?string $path The path where cache files will be stored
+	/** @param ?string $path Path to the directory where cache files are stored.
+	 *     If null, $_SERVER['DOCUMENT_ROOT'].'/cache' is used.
+	 *     If empty, the system temporary directory is used.
 	 * @throws E */
 	function __construct(?string$path=null)
 	{
-		$this->backup=$path ? \rtrim($path,'/\\') : \rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/cache';
+		$path??=\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/cache';
+		$path=$path ? \rtrim($path,'/\\') : \sys_get_temp_dir();
 
-		if(!\is_dir($this->backup) and !\mkdir($this->backup,0744,true) or !\is_writeable($this->backup))
-			throw new E('Cache folder is unreachable',E::SYSTEM,input:$this->backup);
+		if(!\is_dir($path) and !\mkdir($path,0755,true) or !\is_writeable($path))
+			throw new E('Cache folder is unreachable',E::SYSTEM,input:['path'=>$path]);
 
-		$cachedir=__DIR__.'/cache/';
+		$engines=__DIR__.'/cache/';
+		$this->backup=$path.\DIRECTORY_SEPARATOR;
 
-		if(\class_exists('\\Memcache',false) and \is_file($cachedir.'memcache.php'))
-			$this->Engine=new Cache\MemCache(PUNYCODE);
-		elseif(\class_exists('\\Memcached',false) and \is_file($cachedir.'memcached.php'))
-			$this->Engine=new Cache\MemCached(PUNYCODE);
-		elseif(\extension_loaded('shmop') and \is_file($cachedir.'shmop.php'))
-			$this->Engine=new Cache\Shmop($path);
+		if(\class_exists('\\Memcache',false) and \is_file($engines.'memcache.php'))
+			try{
+				$this->Engine=new Cache\Memcache(PUNYCODE);
+				return;
+			}catch(E$E){
+				$E->Log();
+			}
+
+		if(\class_exists('\\Memcached',false) and \is_file($engines.'memcached.php'))
+			try{
+				$this->Engine=new Cache\Memcached(PUNYCODE);
+				return;
+			}catch(E$E){
+				$E->Log();
+			}
+
+		if(\extension_loaded('shmop') and \is_file($engines.'shmop.php'))
+			$this->Engine=new Cache\Shmop($this->backup);
 		else
-			$this->Engine=new Cache\Serialize($path);
+			$this->Engine=new Cache\Serialized($this->backup);
 	}
 
-	/** Storing value
-	 * @param string $key
-	 * @param mixed $value
-	 * @param int $ttl Time To Live in seconds
-	 * @param bool $backup Flag of storing backup version of value for preventing dog-pile effect
+	/** Store value by cache key.
+	 * Passing null as value removes the cache entry.
+	 * @param string $key Cache key
+	 * @param mixed $value Value to store
+	 * @param int $ttl Time To Live in seconds. When set to 0, the cache never expires
+	 * @param bool $backup Whether to store a backup value to reduce the dog-pile effect
 	 * @throws E */
-	function Put(string$key,mixed$value=false,int$ttl=0,bool$backup=false):void
+	function Put(string$key,mixed$value=null,int$ttl=86400,bool$backup=false):void
 	{
-		if($value===false)
+		if($value===null)
 		{
 			$this->Delete($key,$backup);
 			return;
 		}
 
+		static::Sanitize($key);
+
 		$this->Engine->Put($key,$value,$ttl);
 
 		if($backup)
 		{
-			static::Sanitize($key);
+			$json=\json_encode($value,static::JSON);
 
-			\file_put_contents($this->backup."/{$key}.json",\json_encode($value,static::JSON));
+			if($json===false)
+				new E('Unable to encode cache backup to JSON',E::SYSTEM,input:[
+					'key'=>$key,
+					'value'=>$value,
+					'code'=>\json_last_error(),
+				])->Log();
+			elseif(\file_put_contents($this->backup.$key.'.json',$json,\LOCK_EX)!==\strlen($json))
+				new E('Unable to store cache backup',E::SYSTEM,file:$this->backup.$key.'.json',line:null)->Log();
 		}
 	}
 
-	/** Retrieving value
-	 * @param string $key
-	 * @param bool|int $backup Flag for retrieving value from backup
-	 * @return mixed
+	/** Retrieve value by cache key.
+	 * @param string $key Cache key
+	 * @param int $ttl Backup restore TTL:
+	 *     - -1 disables backup usage;
+	 *     - 0 restores backup as never-expiring and returns it;
+	 *     - >0 restores backup for this many seconds and returns null, allowing the current caller to regenerate fresh cache.
+	 * @return mixed Cached value, restored backup value, or null
 	 * @throws E */
-	function Get(string$key,bool|int$backup=false):mixed
+	function Get(string$key,int$ttl=-1):mixed
 	{
-		$value=$this->Engine->Get($key);
-
-		if($value!==null or !$backup)
-			return $value;
-
 		static::Sanitize($key);
 
-		$file=$this->backup."/{$key}.json";
+		$value=$this->Engine->Get($key);
 
-		if(!\is_file($file))
+		if($value!==null or $ttl<0)
+			return $value;
+
+		$f=$this->backup.$key.'.json';
+
+		if(!\is_file($f))
 			return null;
 
-		$renew=$backup===true;
-		$value=\json_decode(\file_get_contents($file),true);
+		$json=\file_get_contents($f);
 
-		$this->Put($key,$value,$renew ? 86400 : $backup);
+		if($json===false)
+		{
+			new E('Unable to load cache backup',E::SYSTEM,file:$f,line:null)->Log();
+			return null;
+		}
 
-		return $renew ? $value : null;
+		$json=\json_decode($json,true);
+		$code=\json_last_error();
+
+		if($code!==\JSON_ERROR_NONE)
+		{
+			new E('Invalid cache backup',E::SYSTEM,file:$f,line:null,input:['code'=>$code])->Log();
+			return null;
+		}
+
+		$this->Put($key,$json,$ttl);
+
+		return $ttl>0 ? null : $json;
 	}
 
-	/** Removing value
-	 * @param string $key
-	 * @param bool $backup Flag for removing backup value
+	/** Remove value by cache key.
+	 * @param string $key Cache key
+	 * @param bool $backup Whether to remove the backup value too
 	 * @throws E */
-	function Delete(string $key,bool$backup=false):void
+	function Delete(string$key,bool$backup=false):void
 	{
+		static::Sanitize($key);
+
 		$this->Engine->Delete($key);
 
-		if($backup)
-		{
-			static::Sanitize($key);
-			unlink($this->backup."/{$key}.json");
-		}
+		if(!$backup)
+			return;
+
+		$f=$this->backup.$key.'.json';
+
+		if(\is_file($f) and !\unlink($f))
+			new E('Unable to delete cache backup',E::SYSTEM,file:$f,line:null)->Log();
 	}
 
-	/** @throws E */
+	/** Validate the cache key.
+	 * @param string $key Cache key
+	 * @throws E */
 	protected static function Sanitize(string$key):void
 	{
-		if(\preg_match('#[^a-z\d.\-_]+#i',$key,$m)>0)
-			throw new E('Invalid eternal key',E::PHP,...\Eleanor\BugFileLine(static::class),input:['key'=>$key,'wrong'=>$m[0]]);
+		if($key==='' or \strspn($key,'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-')!==\strlen($key))
+			throw new E('Invalid cache key',E::PHP,...\Eleanor\BugFileLine(static::class),input:['key'=>$key]);
 	}
 }
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return Cache::class;

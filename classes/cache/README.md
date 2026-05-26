@@ -11,7 +11,7 @@ All cache adapters in this directory belong to the `Eleanor\Classes\Cache` names
 ```php
 namespace Eleanor\Classes\Cache;
 
-class Serialize implements \Eleanor\Interfaces\Cache
+class Serialized implements \Eleanor\Interfaces\Cache
 {
     // ...
 }
@@ -23,7 +23,7 @@ The directory currently contains:
 
 - `memcache.php` - adapter for the legacy `Memcache` extension;
 - `memcached.php` - adapter for the `Memcached` extension;
-- `serialize.php` - file-based cache with serialized values;
+- `serialized.php` - file-based cache with serialized values;
 - `shmop.php` - cache based on shared memory functions.
 
 ## Required Interface

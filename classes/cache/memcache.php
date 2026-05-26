@@ -4,16 +4,19 @@ namespace Eleanor\Classes\Cache;
 
 use Eleanor\Classes\E;
 
-/** Adapter of MemCache engine */
-class MemCache implements \Eleanor\Interfaces\Cache
+/** Adapter for Memcache cache engine */
+class Memcache implements \Eleanor\Interfaces\Cache
 {
+	/** @var string Memcache server host */
 	static string $host='localhost';
+	
+	/** @var int Memcache server port */
 	static int $port=11211;
 
-	/** @var \Memcache Cache machine instance */
+	/** @var \Memcache Memcache client instance */
 	readonly \Memcache $M;
 
-	/** @param string $prefix Prefix for values in cache machine
+	/** @param string $prefix Prefix for cache keys
 	 * @throws E */
 	function __construct(readonly string$prefix='')
 	{
@@ -23,35 +26,44 @@ class MemCache implements \Eleanor\Interfaces\Cache
 		if(!$connected)
 		{
 			$this->M->close();
-			throw new E('MemCache failure',E::SYSTEM,hint:'Try to delete the file library/classes/cache/memcache.php');
+			throw new E('Memcache server is unavailable',E::SYSTEM,
+				hint:'Try removing the file library/classes/cache/memcache.php',
+				input:['host'=>static::$host,'port'=>static::$port]
+			);
 		}
 
 		$this->M->setCompressThreshold(20000);
 	}
 
-	/** Storing value
-	 * @param string $k Key
-	 * @param mixed $v Value
-	 * @param int $ttl Time To Live in seconds */
+	/** Store value by cache key
+	 * @param string $k Cache key
+	 * @param mixed $v Value to store
+	 * @param int $ttl Time To Live in seconds. When set to 0, the cache never expires */
 	function Put(string$k,mixed$v,int$ttl=86400):void
 	{
-		$this->M->set($this->prefix.$k,$v,\is_bool($v) || \is_int($v) || \is_float($v) ? 0 : \MEMCACHE_COMPRESSED,$ttl);
+		if(!$this->M->set($this->prefix.$k,$v,\is_string($v) || \is_array($v) ? \MEMCACHE_COMPRESSED : 0,$ttl))
+			new E('Unable to store value in Memcache',E::SYSTEM,input:[
+				'key'=>$k,
+				'value'=>$v,
+			])->Log();
 	}
 
-	/** Retrieving value
-	 * @param string $k Key
-	 * @return mixed */
+	/** Retrieve value by cache key.
+	 * Do not store false in Memcache because it is treated as a missing value.
+	 * @param string $k Cache key
+	 * @return mixed Cached value, or null when the key is missing or unreadable */
 	function Get(string$k):mixed
 	{
-		return $this->M->get($this->prefix.$k);
+		$v=$this->M->get($this->prefix.$k);
+		return $v===false ? null : $v;
 	}
 
-	/** Removing value
-	 * @param string $k Key */
+	/** Remove value by cache key
+	 * @param string $k Cache key */
 	function Delete(string$k):void
 	{
 		$this->M->delete($this->prefix.$k);
 	}
 }
 
-return MemCache::class;
+return Memcache::class;
