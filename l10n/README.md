@@ -1,21 +1,61 @@
-### English
-Localization (l10n) files for library components. Each file should return array where values can be either strings (for plain translation cases) or Closures (for complex translation cases). Each file name contains suffix with code of language.
+[Русская версия](README.ru.md)
 
-I'm pretty sure that localization via functions like `__()` was designed by morons and is only used by imbeciles. I admit that even such a shitty approach can solve some primitive l10n cases. But when it comes to really complicated translation twists, translation files MUST support programming. Here are just 2 examples, which should be enough to show why the gettext format sucks:
+# Localization files
 
-1. No inheritance or translation reuse. That's obvious.
-2. Impossibility of complicated sorted enumerations, especially when dealing with plurals. Just try to obtain a harmonious message with 2 variables defining number of apples and oranges, covering the following cases:
-   - "There's nothing" (when both are 0);
-   - "There is just 1 apple" or "There is just 1 orange" (when one variable equals 0 and other equals 1);
-   - "There are just X apples" or "There are just X oranges" (when one variable equals 0 and other is greater than 1);
-   - "There are X apples and 1 orange" or "There are X oranges and 1 apple" (when greater variable should come first);
-   - "There are X oranges and apples each" (when both variable are the same);
+This directory contains localization (l10n) files for library components. Each localization file must return an array where values may be:
 
----
-### Русский
-Языковые (l10n) файлы компонентов библиотеки. Каждый файл должен возвращать массив, где в качестве значений могут быть либо строки (для случая простого перевода) или Closure (для случая сложного перевода). Каждое имя файла содержит суффикс с кодом языка.
+- strings — for simple translation cases;
+- Closures — for dynamic or structurally complex translations.
 
-Я абсолютно уверен, что локализация через функции вроде `__()` была придумана дебилами, а используется исключительно имбецилами. Хотя я допускаю, что в примитивных случаях локализации, это дерьмище вполне может работать. Но когда приходится иметь дело с действительно сложными языковыми конструкциями, без программирования не обойтись. Вот 2 простых примера которых вполне достаточно, чтобы понять что формат gettext это отстой:
+Example:
 
-1. Невозможно наследование или повторное использования перевода. Это совершенно очевидно.
-2. Невозможность сложных сортированных перечислений, особенно когда речь идет о множественном числе. Пример можно посмотреть выше в английской версии, только нужно учесть что для русского языка множественные существительные должны согласовываться с числом (2 яблока или апельсина, но 7 яблок или апельсинов). 
+```php
+return [
+	'title'=>'User profile',
+	'items'=>fn(int$count)=>match($count){
+		0=>'No items',
+		1=>'One item',
+		default=>"$count items",
+	},
+];
+```
+
+Each file name must include a language suffix identifying the target language. Supported naming formats:
+
+```text
+[component-name].[language-code].php
+[language-code].php
+```
+
+Examples:
+
+```text
+auth.en.php
+auth.ru.php
+en.php
+ru.php
+```
+
+## Why translations are programmable
+
+The localization system intentionally avoids gettext-style approaches based exclusively on functions like `__()` and static translation strings. While such approaches may work for simple substitutions, they become increasingly limited when dealing with complex linguistic rules, reusable translation logic, or dynamically structured messages. Translation files in Eleanor PHP Library are therefore designed as executable PHP definitions rather than static dictionaries. This provides several important capabilities:
+
+- reusable translation logic;
+- inheritance and composition;
+- dynamically generated messages;
+- language-specific grammatical rules;
+- arbitrarily complex pluralization;
+- context-aware formatting.
+
+## Example of a problematic gettext case
+
+Consider two variables representing quantities of apples and oranges. A proper translation system may need to produce:
+
+- `There's nothing`;
+- `There is just 1 apple`;
+- `There are just 5 apples`;
+- `There are 7 apples and 1 orange`;
+- `There are 10 oranges and 3 apples`;
+- `There are 5 oranges and apples each`.
+
+Such cases become significantly harder to express cleanly using static gettext pluralization rules, especially when multiple independently pluralized variables interact within a single sentence. The problem becomes even more complicated in languages with rich grammatical systems such as Russian.
