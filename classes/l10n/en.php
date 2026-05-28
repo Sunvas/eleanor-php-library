@@ -6,18 +6,19 @@ use Eleanor\Enums\DateFormat;
 /** English language support */
 class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 {
-	/** Formatting singular and plural nouns
+	/** Format singular and plural nouns
 	 * @param int $n Number
-	 * @param string $singular form of the word. Example: item, page
-	 * @param ?string $plural form of the word. If omitted, plural form will be made by adding 's' to the singular form.
+	 * @param string $singular Singular form of the word. Example: item, page
+	 * @param ?string $plural Plural form of the word. If omitted, it will be formed by adding "s" to the singular form
 	 * @return string */
 	static function Plural(int$n,string$singular,?string$plural=null):string
 	{
-		return$n===1 ? $singular : $plural ?? $singular.'s';
+		return $n===1 ? $singular : $plural ?? $singular.'s';
 	}
 
-	/** Formatting date/time in human-readable format
-	 * @param int|string $d Machine-readable date/time or timestamp. If 0 or empty string - current date will be used
+	/** Format date/time in human-readable form
+	 * @param int|string $d Machine-readable date/time or timestamp.
+	 *     If 0 or an empty string is passed, the current date will be used
 	 * @param DateFormat $f
 	 * @return string */
 	static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
@@ -42,31 +43,30 @@ class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 		};
 	}
 
-	/** Formatting date in human-readable format
+	/** Format date in human-readable form
 	 * @param int $t Timestamp
-	 * @param bool $human Flag to enable "Today", "Tomorrow", "Yesterday" instead of a date
+	 * @param bool $human Whether to use "Today", "Tomorrow", and "Yesterday" instead of a date
 	 * @return string */
 	static function TextDate(int$t,bool$human=true):string
 	{
-		#PHP 8.6
-		$date=\explode(',',\date('Y,n,j,t',$t));
-		$now=\explode(',',\date('Y,n,j,t'));
+		$day=new \DateTime()->setTimestamp($t)->setTime(0,0);
+		$diff=new \DateTime()->setTime(0,0)->diff($day);
 
 		if($human)
 		{
-			if($date[2]==$now[2] and $date[1]==$now[1] and $date[0]==$now[0])
-				return'Today';
+			$days=$diff->invert ? -$diff->days : $diff->days;
+			$date=match($days){
+				-1=>'Yesterday',
+				0=>'Today',
+				1=>'Tomorrow',
+				default=>null,
+			};
 
-			if($now[0]==$date[0] and $now[1]==$date[1] and $date[2]+1==$now[2] or //Same year and month
-				$now[2]==1 and $date[3]==$date[2] and ($now[0]==$date[0] and $date[1]+1==$now[1] or $date[0]+1==$now[0] and $now[1]==1))//Today is the first day of the month
-				return'Yesterday';
-
-			if($now[0]==$date[0] and $now[1]==$date[1] and $now[2]+1==$date[2] or //Same year and month
-				$date[2]==1 and $now[3]==$now[2] and ($now[0]==$date[0] and $now[1]+1==$date[1] or $now[0]+1==$date[0] and $date[1]==1))//Date is the first day of the month
-				return'Tomorrow';
+			if($date)
+				return $date;
 		}
 
-		#Omitting the year, if the date refers to the current year or the past one, but not more than 3 months
-		return date($now[0]==$date[0] || ($now[0]-$date[0])==1 && $t>=\strtotime('-3month') ? 'd F' : 'd F Y',$t);
+		# If the date is within 4 months of the current date, display it without the year
+		return \date($diff->y<1 && $diff->m<5 ? 'd F' : 'd F Y',$t);
 	}
 }

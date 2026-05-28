@@ -6,36 +6,21 @@ use Eleanor\Enums\DateFormat;
 /** Поддержка русского языка */
 class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 {
-	/** Образование множественной формы слова
+	/** Образование формы множественного числа
 	 * @param int $n Число
-	 * @param string $form1 Форма единственного числа. Пример: элемент, страница
-	 * @param string $form24 Форма множетсвенного числа для 2-4. Пример: элемента, страницы
-	 * @param ?string $form5 Форма множественного числа для 5+. Пример: элементов, страниц
+	 * @param string $form1 Форма единственного числа. Например: элемент, страница
+	 * @param string $form24 Форма множественного числа для 2-4. Например: элемента, страницы
+	 * @param ?string $form5 Форма множественного числа для 5+. Например: элементов, страниц
 	 * @return string */
 	static function Plural(int$n,string$form1,string$form24,?string$form5=null):string
 	{
+		$n=\abs($n);
 		return $n%10==1 && $n%100!=11 ? $form1 : ($n%10>=2 && $n%10<=4 && ($n%100<10 || $n%100>=20) ? $form24 : $form5 ?? $form24);
 	}
 
-	/** Транслитерация строки в латинницу
-	 * @param string $s Текст
-	 * @return string */
-	static function Translit(string$s):string
-	{
-		return \str_replace(
-			['а','б','в','г','д','е','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ы','ё','ж','ч',
-			 'ш','щ','э','ю','я','ъ','ь','А','Б','В','Г','Д','Е','З','И','Й','К','Л','М','Н','О','П','Р','С','Т','У',
-			 'Ф','Х','Ц','Ы','Ё','Ж','Ч','Ш','Щ','Э','Ю','Я','Ъ','Ь'],
-
-			['a','b','v','g','d','e','z','i','j','k','l','m','n','o','p','r','s','t','u','f','h','c','y','yo','zh','ch',
-			 'sh','sch','je','yu','ya',"'","'",'A','B','V','G','D','E','Z','I','J','K','L','M','N','O','P','R','S','T','U',
-			 'F','H','C','Y','Yo','Zh','Ch','Sh','Sch','Je','Yu','Ya',"'","'"],
-			$s
-		);
-	}
-
-	/** Форматирование даты/времени в читаемом для человека формате
-	 * @param int|string $d Дата/время в машинном формате или timestamp. Если 0 либо пустая строка - текущая дата
+	/** Форматирование даты/времени в человекочитаемом формате
+	 * @param int|string $d Дата/время в машинном формате или timestamp.
+	 *     Если передано 0 или пустая строка, используется текущая дата
 	 * @param DateFormat $f
 	 * @return string */
 	static function Date(int|string$d=0,DateFormat$f=DateFormat::HumanDateTime):string
@@ -83,40 +68,33 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 		}.(\idate('Y')==$y ? '' : ' '.$y);
 	}
 
-	/** Формирование даты в читаемом для человека формате
+	/** Формирование даты в человекочитаемом формате
 	 * @param int $t Timestamp
-	 * @param bool $human Флаг включения "Сегодня", "Завтра", "Послезавтра", "Вчера" и "Позавчера" вместо даты
+	 * @param bool $human Флаг использования слов "Сегодня", "Завтра", "Послезавтра", "Вчера" и "Позавчера" вместо даты
 	 * @return string */
 	static function DateText(int$t,bool$human=true):string
 	{
-		#PHP 8.6
-		$date=\array_map('intval',\explode(',',\date('Y,n,j,t',$t)));
-		$now=\array_map('intval',\explode(',',\date('Y,n,j,t')));
+		$day=new \DateTime()->setTimestamp($t)->setTime(0,0);
+		$diff=new \DateTime()->setTime(0,0)->diff($day);
 
 		if($human)
 		{
-			if($date[2]==$now[2] and $date[1]==$now[1] and $date[0]==$now[0])
-				return'Сегодня';
+			$days=$diff->invert ? -$diff->days : $diff->days;
+			$date=match($days){
+				-2=>'Позавчера',
+				-1=>'Вчера',
+				0=>'Сегодня',
+				1=>'Завтра',
+				2=>'Послезавтра',
+				default=>null,
+			};
 
-			if($now[0]==$date[0] and $now[1]==$date[1] and $date[2]+1==$now[2] or //Same year and month
-				$now[2]==1 and $date[3]==$date[2] and ($now[0]==$date[0] and $date[1]+1==$now[1] or $date[0]+1==$now[0] and $now[1]==1))//Today is the first day of the month
-				return'Вчера';
-
-			if($now[0]==$date[0] and $now[1]==$date[1] and $now[2]+1==$date[2] or //Same year and month
-				$date[2]==1 and $now[3]==$now[2] and ($now[0]==$date[0] and $now[1]+1==$date[1] or $now[0]+1==$date[0] and $date[1]==1))//Date is the first day of the month
-				return'Завтра';
-
-			if($now[0]==$date[0] and $now[1]==$date[1] and $date[2]+2==$now[2] or //Same year and month
-				($now[2]==2 and $date[3]==$date[2] or $now[2]==1 and $date[3]==$date[2]+1) and ($now[0]==$date[0] and $date[1]+1==$now[1] or $date[0]+1==$now[0] and $now[1]==1))//Today is the 1-2 day of the month
-				return'Позавчера';
-
-			if($now[0]==$date[0] and $now[1]==$date[1] and $now[2]+2==$date[2] or //Same year and month
-				($date[2]==2 and $now[3]==$now[2] or $date[2]==1 and $now[3]==$now[2]+1) and ($now[0]==$date[0] and $now[1]+1==$date[1] or $now[0]+1==$date[0] and $date[1]==1))//Date is the 1-2 day of the month
-				return'Послезавтра';
+			if($date)
+				return $date;
 		}
 
-		#Опускаем год, если дата относится к текущему году или прошлому, но не более чем на 3 месяца
-		return \sprintf($now[0]==$date[0] || ($now[0]-$date[0])==1 && $t>=\strtotime('-3month') ? '%02d %s' : '%02d %s %d',$date[2],match($date[1]){
+		# Если дата находится в пределах 4 месяцев от текущей, выводим её без года
+		return \sprintf($diff->y<1 && $diff->m<5 ? '%02d %s' : '%02d %s %d',\idate('j',$t),match(\idate('n',$t)){
 				1=>'января',
 				2=>'февраля',
 				3=>'марта',
@@ -129,6 +107,6 @@ class Ru extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 				10=>'октября',
 				11=>'ноября',
 				12=>'декабря',
-			},$date[0]);
+			},\idate('Y',$t));
 	}
 }

@@ -4,15 +4,15 @@ namespace Eleanor\Interfaces;
 
 use Eleanor\Enums\DateFormat;
 
-/** Necessary methods for L10n classes */
+/** Interface for localization helpers */
 interface L10n
 {
-	/** Human representation of the date
-	 * @param int|string $d Date in plain format, or timestamp, or 0 or '' (for current date)
-	 * @param DateFormat $f
+	/** Format date/time for human-readable localized output.
+	 * @param int|string $d Date/time string accepted by strtotime(), Unix timestamp, or 0/'' for current date
+	 * @param DateFormat $f Output format
 	 * @return string */
 	static function Date(int|string$d,DateFormat$f):string;
 }
 
-#Not necessary here, since interface name equals filename
+# Not required here because interface name matches filename.
 return L10n::class;
