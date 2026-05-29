@@ -4,40 +4,47 @@ namespace Eleanor\Classes;
 
 use function Eleanor\BugFileLine;
 
-/** Wrapper for MySQLi driver */
+/** Database helper based on MySQLi driver */
 class MySQL extends \Eleanor\Basic
 {
-	/** @var \MySQLi driver */
+	/** @var \MySQLi MySQLi driver instance */
 	readonly \MySQLi $M;
 
-	/** Connection to MySQL
-	 * @url https://www.php.net/manual/ru/mysqli.construct.php
-	 * @param null|string|\MySQLi $host MySQLi object, IP or hostname
+	/** @var bool Whether the MySQLi instance is owned by this wrapper */
+	readonly bool $owned;
+
+	/** Connect to MySQL server
+	 * @see https://www.php.net/manual/en/mysqli.construct.php
+	 * @param null|string|\MySQLi $host MySQLi object, IP address, or hostname.
 	 * @param ?string $user Username
 	 * @param ?string $pass Password
-	 * @param ?string $db Default DB name
-	 * @param string $charset See https://dev.mysql.com/doc/refman/8.4/en/charset-charsets.html
-	 * @param bool $sync Time synchronizing flag (see description of SyncTimeZone method)
+	 * @param ?string $db Default database name
+	 * @param string $charset Character set
+	 * @param bool $sync Whether to synchronize MySQL session time zone with PHP time zone
 	 * @param ?int $port Port number
-	 * @param ?string $socket Socket or file
+	 * @param ?string $socket Socket path
 	 * @throws EM */
 	function __construct(null|string|\MySQLi$host=null,?string$user=null,#[\SensitiveParameter]?string$pass=null,?string$db=null,string$charset='utf8mb4',bool$sync=true,?int$port=null,?string$socket=null)
 	{
 		if($host instanceof \MySQLi)
 		{
 			$this->M=$host;
+			$this->owned=false;
 			return;
 		}
 
 		$M=\Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
-			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno,params:\compact('host','user','pass','db','port','socket'));
+			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno,params:\compact('host','user','db','port','socket'));
 
 		$M->autocommit(true);
-		$M->set_charset($charset);
+
+		if(!$M->set_charset($charset))
+			throw new EM($M->error,EM::CONNECT,...BugFileLine(),errno:$M->errno);
 
 		$this->M=$M;
+		$this->owned=true;
 
 		if($sync)
 			$this->SyncTimeZone();
@@ -45,11 +52,12 @@ class MySQL extends \Eleanor\Basic
 
 	function __destruct()
 	{
-		$this->M->close();
+		if($this->owned)
+			$this->M->close();
 	}
 
-	/** "Proxy" for accessing to MySQLi driver properties
-	 * @param string $n Name of property
+	/** Proxy for accessing MySQLi driver properties
+	 * @param string $n Property name
 	 * @throws E
 	 * @return mixed */
 	function __get(string$n):mixed
@@ -60,9 +68,9 @@ class MySQL extends \Eleanor\Basic
 		return parent::__get($n);
 	}
 
-	/** "Proxy" for calling to MySQLi driver methods
-	 * @param string $n Name of method
-	 * @param array $a Array of arguments
+	/** Proxy for calling MySQLi driver methods
+	 * @param string $n Method name
+	 * @param array $a Arguments
 	 * @throws \BadMethodCallException
 	 * @return mixed */
 	function __call(string$n,array$a):mixed
@@ -73,40 +81,41 @@ class MySQL extends \Eleanor\Basic
 		return parent::__call($n,$a);
 	}
 
-	/** Synchronizing time of DB with time of PHP (applying timezone). Synchronization works only for TIMESTAMP fields */
+	/** Synchronize MySQL session time zone with PHP time zone. This affects only TIMESTAMP fields.
+	 * @throws EM */
 	function SyncTimeZone():void
 	{
-		$t=\date_offset_get(\date_create());
-		$s=$t>0 ? '+' : '-';
-		$t=\abs($t);
-		$s.=\floor($t/3600).':'.($t%3600);
+		$o=\date_offset_get(\date_create());
+		$s=$o<0 ? '-' : '+';
+		$o=\abs($o);
+		$s.=\sprintf('%02d:%02d',\intdiv($o,3600),($o % 3600) / 60);
 
-		$this->M->query("SET TIME_ZONE='{$s}'");
+		$this->Query("SET TIME_ZONE='$s'");
 	}
 
-	/** Transaction start */
+	/** Start transaction */
 	function Transaction():void
 	{
 		$this->M->autocommit(false);
 	}
 
-	/** Transaction commit */
+	/** Commit transaction */
 	function Commit():void
 	{
 		$this->M->commit();
 		$this->M->autocommit(true);
 	}
 
-	/** Transaction rollback */
-	function RollBack():void
+	/** Roll back transaction */
+	function Rollback():void
 	{
 		$this->M->rollback();
 		$this->M->autocommit(true);
 	}
 
-	/** Performing query
-	 * @param string $q SQL запрос
-	 * @param int $mode
+	/** Perform SQL query
+	 * @param string $q SQL query
+	 * @param int $mode Result mode
 	 * @throws EM
 	 * @return true|\mysqli_result */
 	function Query(string$q,int$mode=MYSQLI_STORE_RESULT):true|\mysqli_result
@@ -126,7 +135,7 @@ class MySQL extends \Eleanor\Basic
 
 	const string IGNORE=' IGNORE';
 
-	/** Wrapper for INSERT queries
+	/** Execute INSERT query
 	 * @param string $t Table name
 	 * @param array $d Data. Formats are described in Insert4 method
 	 * @param bool|string|array $ignore_odku IGNORE flag or contents for ON DUPLICATE KEY UPDATE structure
@@ -143,14 +152,14 @@ class MySQL extends \Eleanor\Basic
 		else
 		{
 			$ext='';
-			$odku='ON DUPLICATE KEY UPDATE ';
+			$odku=' ON DUPLICATE KEY UPDATE ';
 
 			if(\is_string($ignore_odku))
 				$odku.=$ignore_odku;
 			else
 			{
 				foreach($ignore_odku as $k=>&$v)
-					$v="`{$k}`=".$this->Escape($v);
+					$v="`$k`=".$this->Escape($v);
 
 				$odku.=\join(',',$ignore_odku);
 			}
@@ -159,13 +168,13 @@ class MySQL extends \Eleanor\Basic
 		[$insert,$params2]=$this::Insert4($d);
 
 		if(\array_unshift($params,...$params2)>0)
-			return$this->Execute("INSERT{$ext} INTO `{$t}`".$insert.$odku,$params,false)->insert_id;
+			return $this->Execute("INSERT$ext INTO `$t`".$insert.$odku,$params,false)->insert_id;
 
-		$this->Query("INSERT{$ext} INTO `{$t}`".$insert.$odku);
-		return$this->M->insert_id;
+		$this->Query("INSERT$ext INTO `$t`".$insert.$odku);
+		return $this->M->insert_id;
 	}
 
-	/** Wrapper for REPLACE queries
+	/** Execute REPLACE query
 	 * @param string $t Table name
 	 * @param array $d Data. Formats are described in Insert4 method
 	 * @param bool $ignore IGNORE flag
@@ -179,21 +188,21 @@ class MySQL extends \Eleanor\Basic
 
 		if(!$params)
 		{
-			$this->Query("REPLACE{$ext} INTO `{$t}` ".$insert);
+			$this->Query("REPLACE$ext INTO `$t` ".$insert);
 
-			return$this->M->affected_rows;
+			return $this->M->affected_rows;
 		}
 
-		return$this->Execute("REPLACE{$ext} INTO `{$t}` ".$insert,$params,false)->affected_rows;
+		return $this->Execute("REPLACE$ext INTO `$t` ".$insert,$params,false)->affected_rows;
 	}
 
-	/** Generating INSERT section for Prepared Statements
-	 * @param array $d Data in one of the formats:
+	/** Generate INSERT clause for prepared statements
+	 * @param array $d Must not be empty. Data in one of the formats:
 	 *  [ 'field1'=>'value1', 'field2'=>'value2' ] or
 	 *  [ 'field1'=>[ 'values11', 'value12' ], 'field2'=>[ 'value21', 'value22' ] ] or
 	 *  [ ['field1'=>'value11', 'field2'=>'value12' ], ['field1'=>'value21', 'field2'=>'value22' ]  ]
 	 * @return array [string INSERT section,array $params] */
-	static function Insert4(array $d):array
+	static function Insert4(array$d):array
 	{
 		$params=[];
 
@@ -225,7 +234,7 @@ class MySQL extends \Eleanor\Basic
 				$values[]='('.\join(',',$group).')';
 			}
 
-			$fields='(`'.join('`,`',$fields).'`)';
+			$fields='(`'.\join('`,`',$fields).'`)';
 		}
 		else
 		{
@@ -234,10 +243,10 @@ class MySQL extends \Eleanor\Basic
 				$bypass=\is_string($v) ? null : static::Bypass($v);
 
 				if($bypass!==null)
-					return$bypass;
+					return $bypass;
 
 				$params[]=$v;
-				return'?';
+				return '?';
 			};
 
 			$values=\array_values($d);
@@ -246,10 +255,10 @@ class MySQL extends \Eleanor\Basic
 			$values=\array_map(fn($item)=>'('.\join(',',\array_map($map,$item)).')',$values);
 		}
 
-		return[$fields.'VALUES'.\join(',',$values),$params];
+		return[$fields.' VALUES '.\join(',',$values),$params];
 	}
 
-	/** Wrapper for UPDATE queries
+	/** Execute UPDATE query
 	 * @param string $t Table name
 	 * @param array $d Data for update
 	 * @param string|array $w Conditions (WHERE section without WHERE keyword).
@@ -263,7 +272,7 @@ class MySQL extends \Eleanor\Basic
 			return 0;
 
 		$ext=$ignore ? self::IGNORE : '';
-		$q="UPDATE{$ext} `{$t}` SET ";
+		$q="UPDATE$ext `$t` SET ";
 		$params2=[];
 
 		foreach($d as $k=>$v)
@@ -278,38 +287,41 @@ class MySQL extends \Eleanor\Basic
 			else
 				$v=$bypass;
 
-			$q.="`{$k}`={$v},";
+			$q.="`$k`=$v,";
 		}
 
 		$q=\rtrim($q,',').$this->Where($w);
 
 		if(\array_unshift($params,...$params2)>0)
-			return$this->Execute($q,$params,false)->affected_rows;
+			return $this->Execute($q,$params,false)->affected_rows;
 
 		$this->Query($q);
-		return$this->M->affected_rows;
+		return $this->M->affected_rows;
 	}
 
-	/** Wrapper for DELETE queries
+	/** Execute DELETE or TRUNCATE query
 	 * @param string $t Table name
-	 * @param string|array $w Conditions (WHERE section without WHERE keyword), when empty table will be TRUNCATEd
-	 * @param array $params Prepared statement parameters (in that case $w should be string)
+	 * @param string|array $w Conditions without WHERE keyword. When empty, the table will be truncated.
+	 * @param array $params Prepared statement parameters. In this case $w should be a string.
 	 * @param bool $ignore IGNORE flag
-	 * @return int Amount of deleted rows
+	 * @return int Number of affected rows
 	 * @throws EM */
 	function Delete(string$t,string|array$w='',array$params=[],bool$ignore=true):int
 	{
+		if(!$w and $params)
+			throw new EM('Prepared parameters without WHERE clause',EM::CLAUSE,...BugFileLine($this));
+
 		$ext=$ignore ? self::IGNORE : '';
-		$q=$w ? "DELETE{$ext} FROM `{$t}`".$this->Where($w) : "TRUNCATE TABLE `{$t}`";
+		$q=$w ? "DELETE$ext FROM `$t`".$this->Where($w) : "TRUNCATE TABLE `$t`";
 
 		if($params)
-			return$this->Execute($q,$params,false)->affected_rows;
+			return $this->Execute($q,$params,false)->affected_rows;
 
 		$this->Query($q);
-		return$this->M->affected_rows;
+		return $this->M->affected_rows;
 	}
 
-	/** Converting array to a sequence for the IN() statement with escaping.
+	/** Generate escaped sequence for IN() statement
 	 * @param array $a Data
 	 * @param bool $not Flag for NOT IN
 	 * @return string
@@ -319,22 +331,25 @@ class MySQL extends \Eleanor\Basic
 		if(count($a)==1)
 			return($not ? '!=' : '=').$this->Escape(\array_first($a));
 
+		if(!$a)
+			return $not ? ' IS NOT NULL' : ' IS NULL';
+
 		#PHP 8.6
 		$in=\join(',',\array_map($this->Escape(...),$a));
 
-		return($not ? ' NOT' : '')." IN ({$in})";
+		return($not ? ' NOT' : '')." IN ($in)";
 	}
 
-	/** Generating WHERE conditions
+	/** Generate WHERE clause
 	 * @param string|array $w Conditions
 	 * @return string
 	 * @throws EM */
-	function Where(string|array$w):string
+	protected function Where(string|array$w):string
 	{
 		if(\is_array($w))
 		{
 			foreach($w as $k=>&$v)
-				$v="`{$k}`=".$this->Escape($v);
+				$v="`$k`".($v===null ? ' IS NULL' : '='.$this->Escape($v));
 
 			$w=\join(' AND ',$w);
 		}
@@ -342,13 +357,13 @@ class MySQL extends \Eleanor\Basic
 		return $w ? ' WHERE '.$w : '';
 	}
 
-	/** Escaping bypass when value is safe
+	/** Bypass escaping for safe values
 	 * @param mixed $p Value
-	 * @return mixed NULL when value need to be escaped */
+	 * @return mixed Raw SQL value, or null when escaping is required */
 	static function Bypass(mixed$p):mixed
 	{
 		if(\is_int($p) or \is_float($p))
-			return$p;
+			return $p;
 
 		if(\is_bool($p))
 			return+$p;
@@ -359,10 +374,11 @@ class MySQL extends \Eleanor\Basic
 		return $p===null ? 'NULL' : null;
 	}
 
-	/** Escaping unsafe characters in strings
-	 * @param null|int|float|string|bool|\Closure $p Value for escaping
-	 * @param bool $q Flag for putting result into quotes
-	 * @param string $name Name for debug purpose
+	/** Escape unsafe characters in SQL values.
+	 * Closures are treated as trusted raw SQL expressions and are not escaped.
+	 * @param null|int|float|string|bool|\Closure $p Value to escape
+	 * @param bool $q Whether to wrap string result in quotes
+	 * @param string $name Name used for debugging
 	 * @return int|float|string
 	 * @throws EM */
 	function Escape(null|int|float|string|bool|\Closure$p,bool$q=true,string$name=''):int|float|string
@@ -372,15 +388,15 @@ class MySQL extends \Eleanor\Basic
 			$bypass=$this::Bypass($p);
 
 			if(\is_scalar($bypass))
-				return$bypass;
+				return $bypass;
 
-			throw new EM(\is_object($p) ? 'object of '.\get_class($p) : \gettype($p),EM::VALUE,query:$name);
+			throw new EM(\is_object($p) ? 'Object of '.\get_class($p) : \gettype($p),EM::VALUE,query:$name);
 		}
 
 		if($p)
 			$p=$this->M->real_escape_string($p);
 
-		return$q ? "'{$p}'" : $p;
+		return $q ? "'$p'" : $p;
 	}
 
 	/** Prepared statements shortcut
@@ -404,11 +420,15 @@ class MySQL extends \Eleanor\Basic
 		if($ok)
 			return $result ? $stmt->get_result() : $stmt;
 
-		throw new EM($stmt->error,EM::PREPARED,...BugFileLine($this),errno:$stmt->errno,query:$q,params:$params);
+		throw new EM($stmt ? $stmt->error : $this->M->error,EM::PREPARED,...BugFileLine($this),
+			errno:$stmt ? $stmt->errno : $this->M->errno,
+			query:$q,
+			params:$params
+		);
 	}
 
-	/** When parameters are transferred directly to mysqli::execute_query,"Each value is treated as a string."
-	 * This method treats each parameter basing on its type.
+	/** When parameters are passed directly to mysqli::execute_query, "Each value is treated as a string."
+	 * This method binds parameters according to their types.
 	 * @param \MySQLi_stmt $stmt
 	 * @param array $params Parameters
 	 * @return bool
@@ -430,17 +450,17 @@ class MySQL extends \Eleanor\Basic
 				$types.='i';
 			}
 			else
-				throw new EM(\is_object($p) ? ' object of '.\get_class($p) : \gettype($p),EM::VALUE,...BugFileLine(static::class),query:$name);
+				throw new EM(\is_object($p) ? 'Object of '.\get_class($p) : \gettype($p),EM::VALUE,...BugFileLine(static::class),query:$name);
 
-		//Case when all parameters are strings
+		# Case when all parameters are strings
 		if(!\trim($types,'s'))
-			return$stmt->execute($params);
+			return $stmt->execute($params);
 
 		$stmt->bind_param($types, ...$params);
 
-		return$stmt->execute();
+		return $stmt->execute();
 	}
 }
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return MySQL::class;
