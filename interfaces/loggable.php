@@ -2,12 +2,12 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Interfaces;
 
-/** Something that can be logged */
+/** Object that can write itself to a log */
 interface Loggable
 {
-	/** Logging */
-	function Log();
+	/** Write object information to the configured log target. May be a no-op when logging is disabled. */
+	function Log():void;
 }
 
-#Not necessary here, since interface name equals filename
+# Not required here because interface name matches filename.
 return Loggable::class;

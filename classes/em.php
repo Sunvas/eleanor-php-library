@@ -2,7 +2,7 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
 
-/** Special exception for MySQL */
+/** Specialized exception for MySQL-related errors */
 class EM extends \Eleanor\Abstracts\E
 {
 	const int
@@ -16,17 +16,20 @@ class EM extends \Eleanor\Abstracts\E
 		PREPARED=3,
 
 		/** Issue with value */
-		VALUE=4;
+		VALUE=4,
+
+		/** Other errors */
+		OTHER=5;
 
 	/** @param string $message The same as in \Exception
 	 * @param int $code Constants of class (from above) should be used
 	 * @param ?\Throwable $previous The same as in \Exception
 	 * @param ?string $file Path to the file where the exception occurred
 	 * @param ?int $line Line number where the exception occurred
-	 * @param ?int $errno Error number by MySQL
-	 * @param ?string $query Bad query (for QUERY and PREPARED)
-	 * @param ?array $params Parameters of bag query (for CONNECT and PREPARED) */
-	function __construct(string$message,int$code=0,?\Throwable$previous=null,?string$file=null,?int$line=null,readonly ?int$errno=null,readonly ?string$query=null,readonly ?array$params=null)
+	 * @param int $errno Error number by MySQL
+	 * @param string $query Bad query (for QUERY, PREPARED and OTHER), or field name (for VALUE)
+	 * @param array $params Parameters of connection (for CONNECT) or of bad query (for PREPARED) */
+	function __construct(string$message,int$code=0,?\Throwable$previous=null,?string$file=null,?int$line=null,readonly int$errno=0,readonly string$query='',readonly array$params=[])
 	{
 		if($file!==null)
 			$this->file=$file;
@@ -37,16 +40,17 @@ class EM extends \Eleanor\Abstracts\E
 		parent::__construct($message,$code,$previous);
 	}
 
-	/** For BSOD */
+	/** String representation */
 	function __toString():string
 	{
 		$l10n=new L10n('em');
 
 		return match($this->code){
-			self::CONNECT=>$l10n['connect']($this->message,$this->errno,$this->params['db']),
+			self::CONNECT=>$l10n['connect']($this->message,$this->errno,$this->params['db'] ?? '-'),
 			self::QUERY=>$l10n['query']($this->message,$this->errno,$this->query),
 			self::PREPARED=>$l10n['prepared']($this->message,$this->errno,$this->query,$this->params),
 			self::VALUE=>$l10n['value']($this->message,$this->query),
+			self::OTHER=>$l10n['other']($this->message,$this->query),
 			default=>$l10n['default']($this->message,$this->errno),
 		};
 	}
@@ -54,11 +58,15 @@ class EM extends \Eleanor\Abstracts\E
 	/** Logging */
 	function Log():void
 	{
+		if(!\Eleanor\Library::$logs_enabled)
+			return;
+
 		$type=match($this->code){
 			self::CONNECT=>'db_connect',
 			self::QUERY=>'db_query',
 			self::PREPARED=>'db_prepared',
 			self::VALUE=>'db_value',
+			self::OTHER=>'db_other',
 			default=>'db_unknown'
 		};
 
@@ -73,39 +81,37 @@ class EM extends \Eleanor\Abstracts\E
 	 * @return string Item for log file */
 	protected function LogItem(array&$data):string
 	{
-		#Запись в переменные нужна для последующего удобного чтения лог-файла любыми читалками
-		$data['n']??=0;#Counter
+		# Store values separately to keep log files easy to read with common log viewers
+		$data['n']??=0;# Counter
 		$data['n']++;
 
-		$data['u']=Uri::$current;
 		$data['d']=\date('Y-m-d H:i:s');
 		$data['l']=$this->line;
 		$data['m']=$this->message;
 		$data['f']=$this->file;
 
-		$log=$this->message.PHP_EOL;
+		$log=$this->message.\PHP_EOL;
 
 		switch($this->code)
 		{
 			case self::CONNECT:
-				//Если проблема с конкретным пользователем - запишем данные пользователя в лог
-				if(\str_contains($this->message,'Access denied for user'))
-				{
-					$data['h']=$this->params['host'] ?? '';
-					$data['u']=$this->params['user'] ?? '';
-					$data['p']=$this->params['pass'] ?? '';
-
-					$log.=<<<LOG
-Host: {$data['h']}
-User: {$data['u']}
-Pass: {$data['p']}
-LOG;
-				}
-
-				$data['db']=$this->params['db'] ?? '';
+				foreach(['db','host','port','user'] as $k)
+					$data[$k]=$this->params[$k] ?? '-';
 
 				$log.=<<<LOG
+Host: {$data['host']}
+Port: {$data['port']}
+User: {$data['user']}
 Database: {$data['db']}
+LOG;
+
+				if(isset($this->params['socket']))
+				{
+					$data['socket']=$this->params['socket'] ?? '-';
+					$log.='Socket: '.$data['socket'].\PHP_EOL;
+				}
+
+				$log.=<<<LOG
 File: {$data['f']}[{$data['l']}]
 Last happened: {$data['d']}, total: {$data['n']}
 LOG;
@@ -123,7 +129,7 @@ LOG;
 
 			case self::PREPARED:
 				$data['q']=$this->query;
-				$data['p']=\serialize($this->params);
+				$data['p']=\print_r($this->params,true);
 
 				$log.=<<<LOG
 Query: {$data['q']}
@@ -143,6 +149,19 @@ Last happened: {$data['d']}, total: {$data['n']}
 LOG;
 			break;
 
+			case self::OTHER:
+				if($this->query)
+				{
+					$data['q']=$this->query;
+					$log.='Query: '.$this->query.\PHP_EOL;
+				}
+
+				$log.=<<<LOG
+File: {$data['f']}[{$data['l']}]
+Last happened: {$data['d']}, total: {$data['n']}
+LOG;
+			break;
+
 			default:
 				$log.=<<<LOG
 File: {$data['f']}[{$data['l']}]
@@ -150,9 +169,9 @@ Last happened: {$data['d']}, total: {$data['n']}
 LOG;
 		}
 
-		return$log;
+		return $log;
 	}
 }
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return EM::class;

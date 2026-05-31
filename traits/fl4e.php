@@ -2,10 +2,11 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Traits;
 
-/** File and Line for Exceptions. Mainly to extend SPL exceptions (LogicException, RuntimeException) */
+/** Override file and line information for exception classes.
+ * Intended for classes extending \Exception, mainly SPL exceptions such as \LogicException, \RuntimeException and \BadMethodCallException. */
 trait FL4E
 {
-	/** @url https://www.php.net/manual/en/class.exception.php */
+	/** @see https://www.php.net/manual/en/class.exception.php */
 	function __construct(string$message,int$code=0,?\Throwable$previous=null,?string$file=null,?int$line=null)
 	{
 		if($file!==null)
@@ -18,5 +19,5 @@ trait FL4E
 	}
 }
 
-#Not necessary here, since trait name equals filename
+# Not required here because trait name matches filename.
 return FL4E::class;

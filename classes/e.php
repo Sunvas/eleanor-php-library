@@ -2,7 +2,7 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
 
-/** Eleanor's main exception which answers the main question: who is responsible for? */
+/** Eleanor's main exception that classifies who is responsible for the error. */
 class E extends \Eleanor\Abstracts\E
 {
 	const int
@@ -12,7 +12,7 @@ class E extends \Eleanor\Abstracts\E
 		/** System error (e.g. no access to a file): the responsible person is the one who can fix it (sysadmin) */
 		SYSTEM=2,
 
-		/** Data error (e.g. incorrect file format): the person who created the data is responsible. */
+		/** Data error (e.g. incorrect file format): the person who created the data is responsible */
 		DATA=3,
 
 		/** User error (e.g. incorrectly transmitted data): no one is responsible 😆 */
@@ -24,7 +24,7 @@ class E extends \Eleanor\Abstracts\E
 	 * @param ?string $file Path to the file where the exception was thrown
 	 * @param ?int $line Line number where the exception was thrown
 	 * @param string $hint Hint on how to fix an exception
-	 * @param mixed $input Input data that thrown an exception */
+	 * @param mixed $input Input data that caused an exception */
 	function __construct(string$message,int$code=self::USER,?\Throwable$previous=null,?string$file=null,?int$line=null,readonly string$hint='',readonly mixed$input=null)
 	{
 		if($file!==null)
@@ -36,7 +36,7 @@ class E extends \Eleanor\Abstracts\E
 		parent::__construct($message,$code,$previous);
 	}
 
-	/** For BSOD */
+	/** String representation */
 	function __toString():string
 	{
 		$intro=match($this->code){
@@ -47,7 +47,8 @@ class E extends \Eleanor\Abstracts\E
 			default=>'Unknown'
 		};
 
-		return$intro.' exception: '.$this->message;
+		return $intro.' exception: '.$this->message
+			.($this->hint ? \PHP_EOL.' Hint: '.$this->hint : '');
 	}
 
 	/** Logging */
@@ -75,36 +76,40 @@ class E extends \Eleanor\Abstracts\E
 	 * @return string Item for log file */
 	protected function LogItem(array&$data):string
 	{
-		#Запись в переменные нужна для последующего удобного чтения лог-файла любыми читалками
-		$data['n']??=0;#Counter
+		$data['n']??=0;# Counter
 		$data['n']++;
 
-		$data['u']=Uri::$current;
 		$data['d']=\date('Y-m-d H:i:s');
 		$data['l']=$this->line;
 		$data['m']=$this->getMessage();
 		$data['f']=$this->file;
 
-		$log=$this->message.PHP_EOL;
+		$log=$this->message.\PHP_EOL;
 
-		if($this->input)
+		if($this->hint)
+			$log.='Hint: '.$this->hint.\PHP_EOL;
+
+		if($this->input!==null)
+			$log.='Input: '.\print_r($this->input,true).\PHP_EOL;
+
+		if(\Eleanor\Library::$cli)
+			$log.=<<<LOG
+File: {$data['f']}[{$data['l']}]
+Last happened: {$data['d']}, total: {$data['n']}
+LOG;
+		else
 		{
-			$input=\json_encode($this->input,JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-			$log.=$input!==false//Not everithing is convertable to JSON
-				? 'JSONed input: '.$input.PHP_EOL
-				: 'Serialized input: '.\serialize($this->input).PHP_EOL;
-		}
-
-		$log.=<<<LOG
+			$data['u']=Uri::$current;
+			$log.=<<<LOG
 File: {$data['f']}[{$data['l']}]
 URL: {$data['u']}
 Last happened: {$data['d']}, total: {$data['n']}
 LOG;
+		}
 
-		return$log;
+		return $log;
 	}
 }
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return E::class;

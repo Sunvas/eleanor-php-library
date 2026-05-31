@@ -43,6 +43,11 @@ HTML;
 HTML;
 	},
 
+	/** Другие ошибки */
+	'other'=>function($error,$query){
+		return $query ? $error.": <code>$query</code>" : $error;
+	},
+
 	/** Неизвестная ошибка */
 	'default'=>function($error,$errno)use($ent){
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);

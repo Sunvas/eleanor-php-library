@@ -12,13 +12,13 @@ abstract class E extends \Exception implements Loggable
 		/** Maximum log file size before automatic compression */
 		SIZE_TO_COMPRESS=2097152,# 2 MB
 
-		/** Chunk size for compressing file operations */
+		/** Chunk size used during log file compression */
 		CHUNK_SIZE=1024*128;# 128 KB
 
-	/** String representation used by BSOD output */
+	/** String representation */
 	function __toString():string
 	{
-		return$this->message;
+		return $this->message;
 	}
 
 	/** Write exception information to logs */
@@ -28,7 +28,6 @@ abstract class E extends \Exception implements Loggable
 	 * @param array $data Accumulated exception data
 	 * @return string Formatted log entry */
 	abstract protected function LogItem(array&$data):string;
-
 
 	/** Write exception data to log files. Logging uses three files:
 	 *     - *.log Human-readable text log
@@ -42,7 +41,7 @@ abstract class E extends \Exception implements Loggable
 		$dir=\dirname($path);
 
 		if(!\is_dir($dir) and !\mkdir($dir,0755,true))
-			return!\trigger_error("Directory $dir is write-protected!",\E_USER_WARNING);
+			return !\trigger_error("Directory $dir is write-protected!",\E_USER_WARNING);
 
 		$path2log=$path.'.log';
 		$path2json=$path.'.json';
@@ -59,10 +58,10 @@ abstract class E extends \Exception implements Loggable
 		if($is_log and !\is_writeable($path2log) or !$is_log and !\is_writeable(\dirname($path2log)))
 		{
 			\fclose($flh);
-			return!\trigger_error("File $path2log is write-protected!",\E_USER_WARNING);
+			return !\trigger_error("File $path2log is write-protected!",\E_USER_WARNING);
 		}
 
-		# Compress oversized .log files and remove related .json metadata. Large archived logs are assumed to be inactive.
+		# Compressing oversized .log files and removing related .json metadata. Oversized logs are assumed to be inactive.
 		if($is_log and \filesize($path2log)>static::SIZE_TO_COMPRESS)
 		{
 			$archive=\substr_replace($path2log,\date('_Y-m-d_H-i-s'),\strrpos($path2log,'.'),0);
@@ -83,7 +82,7 @@ abstract class E extends \Exception implements Loggable
 		$corrupted=$json===false;
 		$json=$json ? (array)\json_decode($json,true) : [];
 
-		if($corrupted or \json_last_error()!==\JSON_ERROR_NONE)
+		if($corrupted or $is_json and \json_last_error()!==\JSON_ERROR_NONE)
 		{
 			$salt=\bin2hex(\random_bytes(2));
 			\rename($path2json,$path.".$salt.corrupt");
@@ -155,7 +154,7 @@ abstract class E extends \Exception implements Loggable
 		\fclose($fh);
 		\fclose($flh);
 
-		return$r;
+		return $r;
 	}
 
 	/** Compress log file to reduce disk usage.
@@ -192,7 +191,7 @@ abstract class E extends \Exception implements Loggable
 
 		\fclose($fh);
 
-		return$r;
+		return $r;
 	}
 }
 
