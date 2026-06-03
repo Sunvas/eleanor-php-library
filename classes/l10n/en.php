@@ -29,7 +29,7 @@ class En extends \Eleanor\Basic implements \Eleanor\Interfaces\L10n
 			$d=\strtotime($d);
 
 		if(!$d)
-			return'';
+			return '';
 
 		return match($f){
 			DateFormat::Date=>\date('Y-m-d',$d),

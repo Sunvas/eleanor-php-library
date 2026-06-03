@@ -36,12 +36,12 @@ class MySQL extends \Eleanor\Basic
 		$M=\Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
-			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno,params:\compact('host','user','db','port','socket'));
+			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno ?? 0,params:\compact('host','user','db','port','socket'));
 
 		$M->autocommit(true);
 
 		if(!$M->set_charset($charset))
-			throw new EM($M->error,EM::CONNECT,...BugFileLine(),errno:$M->errno);
+			throw new EM($M->error,EM::OTHER,...BugFileLine(),errno:$M->errno,query:$charset);
 
 		$this->M=$M;
 		$this->owned=true;
@@ -127,7 +127,7 @@ class MySQL extends \Eleanor\Basic
 		}
 
 		if($R===false)
-			throw new EM($q ? $this->M->error : 'Empty query',EM::QUERY,...BugFileLine($this),errno:$this->M?->errno,query:$q);
+			throw new EM($q ? $this->M->error : 'Empty query',EM::QUERY,...BugFileLine($this),errno:$this->M->errno,query:$q);
 
 		return $R;
 	}
@@ -309,7 +309,7 @@ class MySQL extends \Eleanor\Basic
 	function Delete(string$t,string|array$w='',array$params=[],bool$ignore=true):int
 	{
 		if(!$w and $params)
-			throw new EM('Prepared parameters without WHERE clause',EM::CLAUSE,...BugFileLine($this));
+			throw new EM('Prepared parameters without WHERE clause',EM::OTHER,...BugFileLine($this));
 
 		$ext=$ignore ? self::IGNORE : '';
 		$q=$w ? "DELETE$ext FROM `$t`".$this->Where($w) : "TRUNCATE TABLE `$t`";

@@ -2,9 +2,7 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
 
-use function
-	Eleanor\BugFileLine,
-	Eleanor\AwareInclude;
+use function Eleanor\{BugFileLine, AwareInclude};
 
 /** Template loader */
 enum Template_Type
@@ -49,7 +47,7 @@ enum Template_Type
 			if($content===1)
 				$content='';
 
-			return$content.\ob_get_contents();
+			return $content.\ob_get_contents();
 		}
 		finally
 		{
@@ -79,7 +77,7 @@ enum Template_Type
 	 * @return ?string */
 	private function Object(string$n,array$p,object$O):?string
 	{
-		//Support only explicit methods
+		# Support only for explicit methods
 		return \method_exists($O,$n) ? \call_user_func_array([$O,$n],$p) : null;
 	}
 }
@@ -111,19 +109,17 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	/** @var array $loaded Loaded templates [type, contents] */
 	protected array $loaded=[];
 
-	/** @var array Property names that should become references to the original properties after cloning objects */
-	protected static array $linking=['default','queue','loaded'];
-
 	/** @param array|string $queue See description above
 	 * @var array $default Default variables being passed to all templates. Are set via ArrayAccess offsetSet */
-	function __construct(array|string$queue=[],protected(set) array $default=[])
+	function __construct(array|string$queue=[],protected(set) array$default=[])
 	{
 		$this->queue=(array)$queue;
+		$this->linking=['default','queue','loaded'];
 
 		parent::__construct();
 	}
 
-	/** Templates source
+	/** Template source
 	 * @param string $n Template name
 	 * @param array $a Arguments
 	 * @return string
@@ -194,10 +190,10 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 				$result=$Type->Get($n,$a+$vars,$item);
 
 			if(null!==$result)
-				return$result;
+				return $result;
 		}
 
-		throw new E("Template '{$n}' not found",E::PHP,...BugFileLine($this));
+		throw new E("Template '$n' not found",E::PHP,...BugFileLine($this));
 	}
 
 	/** Set default variable or append template source to the queue
@@ -238,5 +234,5 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	}
 }
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return Template::class;

@@ -14,7 +14,7 @@ class Shmop implements \Eleanor\Interfaces\Cache
 	/** @var string One-character project identifier used by \ftok() */
 	static string $project_id='e';
 
-	/** @param string $path Path to the directory for auxiliary files, with trailing slash */
+	/** @param string $path Path to the directory containing auxiliary files, with trailing slash */
 	function __construct(readonly string$path){}
 
 	/** Store value by cache key
@@ -27,7 +27,7 @@ class Shmop implements \Eleanor\Interfaces\Cache
 
 		if(!\is_file($f) and !\touch($f))
 		{
-			new E('Unable to create cache file',E::SYSTEM,file:$f,line:null)->Log();
+			new E('Unable to create cache file',E::SYSTEM,input:$f)->Log();
 			return;
 		}
 
@@ -35,7 +35,7 @@ class Shmop implements \Eleanor\Interfaces\Cache
 
 		if($ipc>=0)
 		{
-			# Deleting old shared memory segment
+			# Delete old shared memory segment
 			$old=@\shmop_open($ipc,'w',0,0);
 			if($old!==false)
 				\shmop_delete($old);
@@ -47,7 +47,7 @@ class Shmop implements \Eleanor\Interfaces\Cache
 				$v=\serialize($v);
 
 			$size=\strlen($v);
-			$h=\shmop_open($ipc,'n',static::PERM,$size);
+			$h=@\shmop_open($ipc,'n',static::PERM,$size);
 		}
 		else
 			$h=false;
@@ -55,7 +55,7 @@ class Shmop implements \Eleanor\Interfaces\Cache
 		if($h===false)
 		{
 			\unlink($f);
-			new E('Unable to create shared memory block',E::SYSTEM,file:$f,line:null)->Log();
+			new E('Unable to create shared memory block',E::SYSTEM,input:$f)->Log();
 			return;
 		}
 
@@ -68,7 +68,7 @@ class Shmop implements \Eleanor\Interfaces\Cache
 		{
 			\shmop_delete($h);
 			\unlink($f);
-			new E('Unable to store value in shared memory cache',E::SYSTEM,file:$f,line:null)->Log();
+			new E('Unable to store value in shared memory cache',E::SYSTEM,input:$f)->Log();
 		}
 	}
 
@@ -91,11 +91,11 @@ class Shmop implements \Eleanor\Interfaces\Cache
 			return null;
 		}
 
-		$h=\shmop_open($ipc,'a',0,0);
+		$h=@\shmop_open($ipc,'a',0,0);
 
 		if($h===false)
 		{
-			new E('Unable to load shared memory block',E::SYSTEM,file:$f,line:null)->Log();
+			new E('Unable to load shared memory block',E::SYSTEM,input:$f)->Log();
 			return null;
 		}
 
@@ -121,13 +121,13 @@ class Shmop implements \Eleanor\Interfaces\Cache
 			$h=@\shmop_open($ipc,'w',static::PERM,0);
 
 			if($h===false)
-				new E('Unable to open shared memory block',E::SYSTEM,file:$f,line:null)->Log();
+				new E('Unable to open shared memory block',E::SYSTEM,input:$f)->Log();
 			else
 				\shmop_delete($h);
 		}
 
 		if(!\unlink($f))
-			new E('Unable to delete cache file',E::SYSTEM,file:$f,line:null)->Log();
+			new E('Unable to delete cache file',E::SYSTEM,input:$f)->Log();
 	}
 }
 

@@ -9,7 +9,7 @@ class Memcache implements \Eleanor\Interfaces\Cache
 {
 	/** @var string Memcache server host */
 	static string $host='localhost';
-	
+
 	/** @var int Memcache server port */
 	static int $port=11211;
 

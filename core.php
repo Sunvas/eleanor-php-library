@@ -30,14 +30,14 @@ function BugFileLine(null|string|object$filter=null):array
 	$iso=\is_object($filter);
 	$db=\debug_backtrace($iso ? DEBUG_BACKTRACE_PROVIDE_OBJECT|DEBUG_BACKTRACE_IGNORE_ARGS : DEBUG_BACKTRACE_IGNORE_ARGS);
 
-	#Bug in previous step
+	# Bug in previous step
 	if($filter===null)
 		return[
-			'file'=>$db[1]['file'],
-			'line'=>$db[1]['line'],
+			'file'=>$db[1]['file'] ?? '',
+			'line'=>$db[1]['line'] ?? 0,
 		];
 
-	#Last mention of the object (or its clone)
+	# Last mention of the object (or its clone)
 	if($iso)
 	{
 		$found=[];
@@ -46,7 +46,7 @@ function BugFileLine(null|string|object$filter=null):array
 		{
 			if(isset($item['object']))
 			{
-				#Extracting classname from protected link property of Assign class
+				# Extracting classname from protected link property of Assign class
 				if($item['object']::class===Assign::class)
 				{
 					$F=(function(){ return $this->link; })
@@ -70,10 +70,10 @@ function BugFileLine(null|string|object$filter=null):array
 				break;
 		}
 
-		return$found;
+		return $found;
 	}
 
-	#The first non-mention
+	# The first non-mention
 	foreach(\array_slice($db,1) as $item)
 		if(($item['class'] ?? '')!=$filter and ($item['function'] ?? '')!=$filter)
 			return[
@@ -95,7 +95,7 @@ function AwareInclude(string$file,array$vars=[]):mixed
 	if(!\is_file($file))
 		throw new E('Missing file '.(\str_starts_with($file,SITEDIR) ? \substr($file,\strlen(SITEDIR)) : $file),E::SYSTEM);
 
-	#Storing include path in the unnamed variable so extract(EXTR_OVERWRITE) cannot replace it with a user-supplied variable.
+	# Storing include path in the unnamed variable so extract(EXTR_OVERWRITE) cannot replace it with a user-supplied variable.
 	${''}=$file;
 
 	if($vars)
@@ -114,17 +114,18 @@ function AwareInclude(string$file,array$vars=[]):mixed
 		throw$E;
 	}
 
-	return$r===null ? true : $r;
+	return $r===null ? true : $r;
 }
 
 /** Execute callback quietly with temporary error suppression.
  * PHP errors are ignored and thrown exceptions are converted to null.
  * @param callable $Func Callback to execute
- * @param mixed ...$params Arguments passed to the callback
+ * @param int $level Error level to suppress
+ * @param array $params Arguments passed to the callback
  * @return mixed Callback return value or null on exception */
-function QuietExecution(callable$Func,...$params):mixed
+function QuietExecution(callable$Func,int$level=\E_WARNING|\E_NOTICE,array$params=[]):mixed
 {
-	\set_error_handler(fn()=>null);
+	\set_error_handler(fn()=>null,$level);
 
 	try{
 		return \call_user_func_array($Func,$params);
@@ -157,7 +158,8 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 
 	$out=$Tpl($type,$error,$code,$file,$line,$hint,$payload);
 
-	\ob_clean();
+	if(\ob_get_level())
+		\ob_clean();
 
 	if(Library::$cli)
 	{
@@ -182,13 +184,11 @@ function Autoloader(string$c,string$dir=__DIR__,string$ns=__NAMESPACE__):void
 	$dest=\substr($c,\strlen($ns));
 	$dest=\strtr($dest,'\\','/').'.php';
 
-	#LowerCase
 	$lc=\strtolower($dest);
-
 	$path=$dir.$lc;
 	$exists=\is_file($path);
 
-	#Support of kebab-case filenames
+	# Support of kebab-case filenames
 	if(!$exists)
 	{
 		$count=0;
@@ -205,12 +205,15 @@ function Autoloader(string$c,string$dir=__DIR__,string$ns=__NAMESPACE__):void
 	{
 		$r=(fn()=>require$path)();
 
-		#Trying to make the class available from namespace.
-		if(\class_exists($c,false) or (\is_string($r) and \class_exists($r,false) and \class_alias($r,$c,false)))
+		if(\class_exists($c,false) or \interface_exists($c,false) or \enum_exists($c,false) or \trait_exists($c,false))
+			return;
+
+		# Trying to make the symbol available from namespace
+		if(\is_string($r) and \class_alias($r,$c,false))
 			return;
 	}
 
-	if(!$exists or !\class_exists($c,false) and !\interface_exists($c,false) and !\trait_exists($c,false) and !\enum_exists($c,false))
+	if(!$exists or !\class_exists($c,false) and !\interface_exists($c,false) and !\enum_exists($c,false) and !\trait_exists($c,false))
 	{
 		$what=match(\strstr(\ltrim($lc,'\\'), '\\', true)){
 			'enums'=>'Enum',
@@ -225,14 +228,14 @@ function Autoloader(string$c,string$dir=__DIR__,string$ns=__NAMESPACE__):void
 	}
 }
 
-#Autoloader loads only files from Eleanor PHP Library
+# Autoloader loads only files from Eleanor PHP Library
 \spl_autoload_register(Autoloader(...));
 
 /** Base class recommended for inheritance by all framework classes.
  * Provides common debugging and error-handling hooks that simplify bug detection and diagnostics. */
 abstract class Basic
 {
-	/** Handle calls undefined static methods.
+	/** Handle calls to undefined static methods.
 	 * Intended as the fallback helper for descendant implementations of __callStatic(). Allows subclasses to delegate
 	 * unsupported calls while preserving detailed diagnostic information.
 	 * @param string $n Undefined method name
@@ -255,8 +258,8 @@ abstract class Basic
 	 * @throws \BadMethodCallException */
 	function __call(string$n,array$a):mixed
 	{
-		if(\property_exists($this,$n) and \is_object($this->$n) and \method_exists($this->$n,'__invoke'))
-			return \call_user_func_array([ $this->$n,'__invoke' ],$a);
+		if(\property_exists($this,$n) and \is_object($this->$n) and \is_callable($this->$n))
+			return \call_user_func_array($this->$n,$a);
 
 		throw new class(
 			'Called undefined method '.$this::class.' -› '.$n,
@@ -317,7 +320,7 @@ class Assign extends Basic implements \ArrayAccess
 			$link=$this->link->$n;
 		}
 
-		return$link;
+		return $link;
 	}
 
 	/** Create the target object and call its method.
@@ -328,6 +331,14 @@ class Assign extends Basic implements \ArrayAccess
 	{
 		$this->Create();
 		return \call_user_func_array([$this->link,$n],$a);
+	}
+
+	/** Create the target object and invoke it
+	 * @return mixed */
+	function __invoke(...$a):mixed
+	{
+		$this->Create();
+		return \call_user_func_array($this->link,$a);
 	}
 
 	function offsetSet(...$a):void
@@ -406,33 +417,32 @@ class Library extends Basic
 			throw new E("First argument for '$n' constructor should be \\Closure",E::PHP,...BugFileLine($this));
 
 		$this->creators[$n]=$a;
-		return$this;
+		return $this;
 	}
 
 	/** Lazily load and return the class object by property name.
 	 * @throws E */
 	function __get(string$n):mixed
 	{
-		return$this->$n=$this($n);
+		return $this->$n=$this($n);
 	}
 
 	/** Create and return the object instance by class name.
 	 * Uses registered factory if available; otherwise attempts to load the class file from the classes' directory.
 	 * @param string $n Class name
 	 * @param string $dir Base directory for class lookup
+	 * @param array $params Factory arguments
 	 * @throws E */
-	function __invoke(string$n,string$dir=__DIR__):mixed
+	function __invoke(string$n,string$dir=__DIR__,array$params=[]):mixed
 	{
-		$creator=[];
-
 		if(isset($this->creators[$n]))
-			return \call_user_func(...$this->creators[$n]);
+			return \call_user_func(...$this->creators[$n],...$params);
 
-		$lc=\strtolower($n);#LowerCase
+		$lc=\strtolower($n);
 		$path=$dir."/classes/$lc.php";
 		$exists=\is_file($path);
 
-		#Support of kebab-case filenames
+		# Support of kebab-case filenames
 		if(!$exists)
 		{
 			$count=0;
@@ -453,10 +463,10 @@ class Library extends Basic
 				$class=__NAMESPACE__.'\\'.$n;
 
 			if(\class_exists($class,false))
-				return new $class($creator);
+				return new $class(...$params);
 		}
 
-		throw new E('Trying to construct object from unknown class '.$n,E::PHP,...BugFileLine($this));
+		throw new E('Unknown class '.$n,E::PHP,...BugFileLine($this));
 	}
 }
 
@@ -469,14 +479,14 @@ if(php_sapi_name()==='cli')
 		$_SERVER['DOCUMENT_ROOT']=\getcwd();
 }
 
-#By default, logs are stored in the site's ./logs directory. Web access to this directory should be restricted.
+# By default, logs are stored in the site's ./logs directory. Web access to this directory should be restricted.
 Library::$logs=\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/logs/';
 
-#The filter receives the source file path and decides whether the error/exception should be logged.
+# The filter receives the source file path and decides whether the error/exception should be logged.
 Library::$log_filter=fn($f)=>\str_starts_with($f,__DIR__.\DIRECTORY_SEPARATOR) || \str_starts_with($f,\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR);
 
 Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context=null):void{
-	#Skip @ suppressed errors
+	# Skip @ suppressed errors
 	if(!(\error_reporting() & $c))
 		return;
 
@@ -503,7 +513,7 @@ Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context
 
 		new E($type.$error,E::PHP,file:$f,line:$l,input:$context)->Log();
 
-		#Display errors only if they are related to php code parsing
+		# Display errors only if they are related to php code parsing
 		if($c & \E_PARSE)
 			BSOD($type.$error,$c,$f,$l,null,$context);
 	}
@@ -518,7 +528,7 @@ Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E):vo
 	if($E instanceof Interfaces\Loggable)
 		$E->Log();
 	elseif(Library::$log_all_exceptions or \call_user_func(Library::$log_filter,$f,$c)
-		#Patch for the case when autoloader is off
+		# Patch for the case when autoloader is off
 		and (\class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php')))
 	{
 		$c=match(true){
@@ -534,6 +544,6 @@ Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E):vo
 	BSOD($m,$c,$f,$l,\property_exists($E,'hint') ? $E->hint : null,\property_exists($E,'input') ? $E->input : null);
 });
 
-#IDN support
+# IDN support
 \define('Eleanor\PUNYCODE',\filter_var($_SERVER['HTTP_HOST'] ?? '',\FILTER_VALIDATE_DOMAIN,\FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
 \define('Eleanor\DOMAIN',\str_starts_with(PUNYCODE,'xn--') ? Classes\Punycode::Domain(PUNYCODE,false) : PUNYCODE);

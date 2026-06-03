@@ -7,13 +7,13 @@ enum DateFormat:string {
 	/** Time only, numeric format: HH:MM:SS */
 	case Time='t';
 
-	/** Date only, numeric ISO-like format: YYYY-MM-DD */
+	/** Date only, numeric ISO 8601-like format: YYYY-MM-DD */
 	case Date='d';
 
 	/** Date and time, numeric format: YYYY-MM-DD HH:MM:SS */
 	case DateTime='dt';
 
-	/** Month name with year when needed */
+	/** Localized month name with optional year */
 	case MonthYear='my';
 
 	/** Localized textual date without relative words */
@@ -25,7 +25,7 @@ enum DateFormat:string {
 	/** Human-friendly localized date, may use relative words such as today/yesterday/tomorrow */
 	case HumanDate='hd';
 
-	/** Human-friendly localized date with time */
+	/** Human-friendly localized date and time */
 	case HumanDateTime='hdt';
 }
 

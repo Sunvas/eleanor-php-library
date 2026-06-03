@@ -10,7 +10,7 @@ class Cache extends \Eleanor\Basic
 	/** @var string Path to the directory where backup values are stored, with trailing slash */
 	readonly string $backup;
 
-	/** @var \Eleanor\Interfaces\Cache Cache engine instance  */
+	/** @var \Eleanor\Interfaces\Cache Cache engine instance */
 	readonly \Eleanor\Interfaces\Cache $Engine;
 
 	/** @const JSON flags used for cache backup files */
@@ -91,7 +91,7 @@ class Cache extends \Eleanor\Basic
 	 * @param string $key Cache key
 	 * @param int $ttl Backup restore TTL:
 	 *     - -1 disables backup usage;
-	 *     - 0 restores backup as never-expiring and returns it;
+	 *     - 0 restores the backup as non-expiring and returns it;
 	 *     - >0 restores backup for this many seconds and returns null, allowing the current caller to regenerate fresh cache.
 	 * @return mixed Cached value, restored backup value, or null
 	 * @throws E */
@@ -150,12 +150,14 @@ class Cache extends \Eleanor\Basic
 			new E('Unable to delete cache backup',E::SYSTEM,file:$f,line:null)->Log();
 	}
 
+	protected const string ALLOWED_CHARS='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-';
+
 	/** Validate the cache key.
 	 * @param string $key Cache key
 	 * @throws E */
 	protected static function Sanitize(string$key):void
 	{
-		if($key==='' or \strspn($key,'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-')!==\strlen($key))
+		if($key==='' or \strspn($key,static::ALLOWED_CHARS)!==\strlen($key))
 			throw new E('Invalid cache key',E::PHP,...\Eleanor\BugFileLine(static::class),input:['key'=>$key]);
 	}
 }

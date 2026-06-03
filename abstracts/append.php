@@ -15,13 +15,13 @@ abstract class Append extends \Eleanor\Basic implements \Stringable
 	/** @var string Accumulator for generated method results */
 	protected string $storage='';
 
-	/** @var array Property names linked by reference from primary object to cloned instances */
+	/** @var array Property names shared by reference between primary and cloned instances */
 	protected array $linking=[] {
 		/** @throws E */
 		set=>\array_all($value,fn($item)=>\property_exists($this,$item) || throw new E("Linked property $item does not exist",E::PHP,...\Eleanor\BugFileLine($this))) ? $value : [];
 	}
 
-	/** Initialize primary builder instance */
+	/** Initialize the primary builder instance */
 	function __construct()
 	{
 		$this->primary=true;
@@ -33,7 +33,7 @@ abstract class Append extends \Eleanor\Basic implements \Stringable
 	{
 		$s=$this->storage;
 		$this->storage='';
-		return$s;
+		return $s;
 	}
 
 	/** Generate a single fragment without appending it to the accumulator.
@@ -42,10 +42,10 @@ abstract class Append extends \Eleanor\Basic implements \Stringable
 	 * @return string */
 	function __invoke(string$n,...$a):string
 	{
-		return$this->_($n,...$a);
+		return $this->_($n,...$a);
 	}
 
-	/** Fluent interface realization: generates a fragment and appends it to the accumulator.
+	/** Fluent interface implementation: generates a fragment and appends it to the accumulator.
 	 * @param string $n Fragment name
 	 * @param array $a Fragment arguments
 	 * @return static */
@@ -62,12 +62,12 @@ abstract class Append extends \Eleanor\Basic implements \Stringable
 
 			$O->storage.=$O->_($n,...$a);
 
-			return$O;
+			return $O;
 		}
 
 		$this->storage.=$this->_($n,...$a);
 
-		return$this;
+		return $this;
 	}
 
 	/** Generate a string fragment by name.
