@@ -5,53 +5,53 @@ namespace Eleanor\Classes;
 /** Relative URI generator */
 class Uri extends \Eleanor\Basic
 {
-	/** @static Current URI (from browser's address bar) */
-	static string $current;
+	/** @static Raw current URI from browser address bar */
+	static string $raw;
 
-	/** Obtaining the Clean URI (decoded variable $uri from NGINX)
-	 * @url https://en.wikipedia.org/wiki/Clean_URL
-	 * @url https://ru.wikipedia.org/wiki/Человекопонятный_URL
+	/** Get decoded clean URI (decoded variable $uri from NGINX).
+	 * To improve accuracy, it is recommended to add to the nginx configuration something like this:
+	 * set $clean_uri "";
+	 *
+	 * if (!-e $request_filename) {
+	 *   set $clean_uri $uri;
+	 *   rewrite ^.*$ /index.php last;
+	 * }
+	 * ...
+	 * location ~ \.php$ {
+	 *   fastcgi_param CLEAN_URI $clean_uri;
+	 *   ...
+	 * }
+	 * @see https://en.wikipedia.org/wiki/Clean_URL
+	 * @see https://ru.wikipedia.org/wiki/Человекопонятный_URL
 	 * @return string */
-	static function GetURI():string
+	static function Clean():string
 	{
-		/* To improve accuracy, it is recommended to add to the nginx configuration something like this:
-		set $clean_url "";
-
-		if (!-e $request_filename) {
-			set $clean_url $uri;
-			rewrite ^.*$ /index.php last;
-		}
-		...
-		location ~ \.php$ {
-			fastcgi_param URI $clean_url;
-			...
-		}
-		*/
-
-		//It is guaranteed that we have Clean URL here
-		if(isset($_SERVER['URI']))
+		# It is guaranteed that we have Clean URL here
+		if(isset($_SERVER['CLEAN_URI']))
 		{
-			$uri=$_SERVER['URI'];
+			$uri=$_SERVER['CLEAN_URI'];
 
-			return \urldecode(\substr($uri,\strlen(\Eleanor\SITEDIR)));
+			# PHP 8.6: migrate to pipe operator
+			return \substr($uri,\strlen(\Eleanor\SITEDIR))
+				|> \urldecode(...);
 		}
 
 		$uri=$_SERVER['REQUEST_URI'];
 
-		//Not Clean URL: link like /index.php?param=value
+		# Traditional query-based URL: link like /index.php?param=value
 		if(\str_starts_with($uri,$_SERVER['SCRIPT_NAME']))
-			return'';
+			return '';
 
-		//Not Clean URL: site root / with or without query /?param=value
+		# Traditional query-based URL: site root / with or without query /?param=value
 		if($uri==='/' or \str_starts_with($uri,'/?'))
-			return'';
+			return '';
 
-		[$uri]=\explode('?',static::$current, 2);
+		[$uri]=\explode('?',static::$raw, 2);
 
 		return \urldecode($uri);
 	}
 
-	/** Generating relative URIs
+	/** Generate relative URI
 	 * @param array $slugs Clean URL parts (slugs)
 	 * @param string $ending Ending of URI
 	 * @param array $q Query
@@ -66,7 +66,7 @@ class Uri extends \Eleanor\Basic
 		return \join('/',$r).($r ? $ending : '').($q ? static::Query($q) : '');
 	}
 
-	/** Query generator
+	/** Generate query string
 	 * @param array $a Parameters for query
 	 * @param bool $q Add ? to the beginning, if it was possible to assemble query string
 	 * @param string $d Separator of parameters
@@ -75,7 +75,7 @@ class Uri extends \Eleanor\Basic
 	{
 		$r=[];
 
-		foreach($a as $k=>&$v)
+		foreach($a as $k=>$v)
 		{
 			$k=\urlencode($k);
 
@@ -92,7 +92,7 @@ class Uri extends \Eleanor\Basic
 		return($q && $r ? '?' : '').\join($d,$r);
 	}
 
-	/** Parameters generator for the Query method.
+	/** Generate nested query parameters for Query().
 	 * @param array $a Parameters
 	 * @param string $p Prefix for each param
 	 * @param array &$r Reference for placing results */
@@ -108,7 +108,8 @@ class Uri extends \Eleanor\Basic
 	}
 }
 
-Uri::$current=\substr($_SERVER['REQUEST_URI'],\strlen(\Eleanor\SITEDIR));
+# Get raw URI without site directory prefix
+Uri::$raw=\substr($_SERVER['REQUEST_URI'],\strlen(\Eleanor\SITEDIR));
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return Uri::class;

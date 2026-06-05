@@ -4,4 +4,5 @@ return[
 	'file'=>'File',
 	'line'=>'Line',
 	'hint'=>'Hint',
+	'input'=>'Input data',
 ];

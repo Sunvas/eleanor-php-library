@@ -2,7 +2,7 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
 
-use const Eleanor\PUNYCODE;
+use const Eleanor\DOMAIN;
 
 /** Cache manager with automatic engine selection */
 class Cache extends \Eleanor\Basic
@@ -33,7 +33,7 @@ class Cache extends \Eleanor\Basic
 
 		if(\class_exists('\\Memcache',false) and \is_file($engines.'memcache.php'))
 			try{
-				$this->Engine=new Cache\Memcache(PUNYCODE);
+				$this->Engine=new Cache\Memcache(DOMAIN);
 				return;
 			}catch(E$E){
 				$E->Log();
@@ -41,7 +41,7 @@ class Cache extends \Eleanor\Basic
 
 		if(\class_exists('\\Memcached',false) and \is_file($engines.'memcached.php'))
 			try{
-				$this->Engine=new Cache\Memcached(PUNYCODE);
+				$this->Engine=new Cache\Memcached(DOMAIN);
 				return;
 			}catch(E$E){
 				$E->Log();

@@ -15,7 +15,7 @@ class MySQL extends \Eleanor\Basic
 
 	/** Connect to MySQL server
 	 * @see https://www.php.net/manual/en/mysqli.construct.php
-	 * @param null|string|\MySQLi $host MySQLi object, IP address, or hostname.
+	 * @param null|string|\MySQLi $host MySQLi object, IP address, or hostname. Prepending host by p: opens a persistent connection.
 	 * @param ?string $user Username
 	 * @param ?string $pass Password
 	 * @param ?string $db Default database name
@@ -90,7 +90,7 @@ class MySQL extends \Eleanor\Basic
 		$o=\abs($o);
 		$s.=\sprintf('%02d:%02d',\intdiv($o,3600),($o % 3600) / 60);
 
-		$this->Query("SET TIME_ZONE='$s'");
+		$this->Query("SET TIME_ZONE='$s'",null);
 	}
 
 	/** Start transaction */
@@ -115,13 +115,13 @@ class MySQL extends \Eleanor\Basic
 
 	/** Perform SQL query
 	 * @param string $q SQL query
-	 * @param int $mode Result mode
+	 * @param ?int $mode Result mode. Pass null for resultless queries to use mysqli::real_query()
 	 * @throws EM
-	 * @return true|\mysqli_result */
-	function Query(string$q,int$mode=MYSQLI_STORE_RESULT):true|\mysqli_result
+	 * @return true|\mysqli_result True for resultless queries, MySQLi_result for result queries */
+	function Query(string$q,?int$mode=MYSQLI_STORE_RESULT):true|\mysqli_result
 	{
 		try{
-			$R=$this->M->query($q,$mode);
+			$R=$mode===null ? $this->M->real_query($q) : $this->M->query($q,$mode);
 		}catch(\mysqli_sql_exception$E){
 			throw new EM($E->getMessage(),EM::QUERY,$E,...BugFileLine($this),errno:$E->getCode(),query:$q);
 		}
@@ -168,9 +168,12 @@ class MySQL extends \Eleanor\Basic
 		[$insert,$params2]=$this::Insert4($d);
 
 		if(\array_unshift($params,...$params2)>0)
-			return $this->Execute("INSERT$ext INTO `$t`".$insert.$odku,$params,false)->insert_id;
+		{
+			$stmt=$this->Execute("INSERT$ext INTO `$t`".$insert.$odku,$params,false);
+			return [$stmt->insert_id,$stmt->close()][0];
+		}
 
-		$this->Query("INSERT$ext INTO `$t`".$insert.$odku);
+		$this->Query("INSERT$ext INTO `$t`".$insert.$odku,null);
 		return $this->M->insert_id;
 	}
 
@@ -188,12 +191,13 @@ class MySQL extends \Eleanor\Basic
 
 		if(!$params)
 		{
-			$this->Query("REPLACE$ext INTO `$t` ".$insert);
+			$this->Query("REPLACE$ext INTO `$t` ".$insert,null);
 
 			return $this->M->affected_rows;
 		}
 
-		return $this->Execute("REPLACE$ext INTO `$t` ".$insert,$params,false)->affected_rows;
+		$stmt=$this->Execute("REPLACE$ext INTO `$t` ".$insert,$params,false);
+		return [$stmt->affected_rows,$stmt->close()][0];
 	}
 
 	/** Generate INSERT clause for prepared statements
@@ -293,9 +297,12 @@ class MySQL extends \Eleanor\Basic
 		$q=\rtrim($q,',').$this->Where($w);
 
 		if(\array_unshift($params,...$params2)>0)
-			return $this->Execute($q,$params,false)->affected_rows;
+		{
+			$stmt=$this->Execute($q,$params,false);
+			return [$stmt->affected_rows,$stmt->close()][0];
+		}
 
-		$this->Query($q);
+		$this->Query($q,null);
 		return $this->M->affected_rows;
 	}
 
@@ -315,9 +322,12 @@ class MySQL extends \Eleanor\Basic
 		$q=$w ? "DELETE$ext FROM `$t`".$this->Where($w) : "TRUNCATE TABLE `$t`";
 
 		if($params)
-			return $this->Execute($q,$params,false)->affected_rows;
+		{
+			$stmt=$this->Execute($q,$params,false);
+			return [$stmt->affected_rows,$stmt->close()][0];
+		}
 
-		$this->Query($q);
+		$this->Query($q,null);
 		return $this->M->affected_rows;
 	}
 
@@ -334,7 +344,7 @@ class MySQL extends \Eleanor\Basic
 		if(!$a)
 			return $not ? ' IS NOT NULL' : ' IS NULL';
 
-		#PHP 8.6
+		# PHP 8.6: migrate to pipe operator
 		$in=\join(',',\array_map($this->Escape(...),$a));
 
 		return($not ? ' NOT' : '')." IN ($in)";
@@ -402,29 +412,37 @@ class MySQL extends \Eleanor\Basic
 	/** Prepared statements shortcut
 	 * @param string $q Query
 	 * @param array $params Parameters
-	 * @param bool $result Flag for returning MySQLi_result, instead of MySQLi_stmt
+	 * @param bool $result Whether to return MySQLi_result. When false, returns an open MySQLi_stmt that must be closed by caller.
 	 * @throws EM
-	 * @return \MySQLi_result | \MySQLi_stmt | false (depending on $result) */
-	function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt|false
+	 * @return \MySQLi_result | \MySQLi_stmt (depending on $result) */
+	function Execute(string$q,array$params,bool$result=true):\MySQLi_result|\MySQLi_stmt
 	{
 		if(!$params)
 			throw new EM('No data supplied for parameters of prepared statement',EM::PREPARED,...BugFileLine($this),query:$q,params:$params);
 
+		$stmt=null;
+		$close=true;
+
 		try{
 			$stmt=$this->M->prepare($q);
-			$ok=$stmt && $this::BindParams($stmt,$params);
+
+			if($stmt and $this::BindParams($stmt,$params))
+			{
+				$close=$result;
+				return $result ? $stmt->get_result() : $stmt;
+			}
+
+			throw new EM($stmt ? $stmt->error : $this->M->error,EM::PREPARED,...BugFileLine($this),
+				errno:$stmt ? $stmt->errno : $this->M->errno,
+				query:$q,
+				params:$params
+			);
 		}catch(\mysqli_sql_exception$E){
 			throw new EM($E->getMessage(),EM::PREPARED,$E,...BugFileLine($this),errno:$E->getCode(),query:$q,params:$params);
+		}finally{
+			if($stmt and $close)
+				$stmt->close();
 		}
-
-		if($ok)
-			return $result ? $stmt->get_result() : $stmt;
-
-		throw new EM($stmt ? $stmt->error : $this->M->error,EM::PREPARED,...BugFileLine($this),
-			errno:$stmt ? $stmt->errno : $this->M->errno,
-			query:$q,
-			params:$params
-		);
 	}
 
 	/** When parameters are passed directly to mysqli::execute_query, "Each value is treated as a string."

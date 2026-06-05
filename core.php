@@ -10,6 +10,9 @@ const CHARSET = 'UTF-8';
 
 \mb_internal_encoding(CHARSET);
 
+/** Base domain name */
+\defined('Eleanor\DOMAIN')||\define('Eleanor\DOMAIN',\filter_var($_SERVER['HTTP_HOST'] ?? '',\FILTER_VALIDATE_DOMAIN,\FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
+
 /** Base site path relative to the domain root with trailing slash */
 \defined('Eleanor\SITEDIR')||\define('Eleanor\SITEDIR',\rtrim(\dirname($_SERVER['PHP_SELF'] ?? '/'),'/\\').'/');
 
@@ -145,9 +148,9 @@ function QuietExecution(callable$Func,int$level=\E_WARNING|\E_NOTICE,array$param
  * @param ?string $file Source file path
  * @param ?int $line Source line number
  * @param ?string $hint Suggested fix or additional diagnostic hint
- * @param ?array $payload Data associated with the crash
+ * @param ?array $input Data associated with the crash
  * @return never */
-function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=null,?array$payload=null):never
+function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=null,?array$input=null):never
 {
 	$Tpl=new Classes\Template(Library::$bsod);
 	$type=Library::$cli ? 'cli' : match(Library::$bsodtype){
@@ -156,7 +159,7 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 		default=>'text'
 	};
 
-	$out=$Tpl($type,$error,$code,$file,$line,$hint,$payload);
+	$out=$Tpl($type,$error,$code,$file,$line,$hint,$input);
 
 	if(\ob_get_level())
 		\ob_clean();
@@ -459,6 +462,9 @@ class Library extends Basic
 		{
 			$class=(fn()=>require$path)();
 
+			if(\is_object($class))
+				return $class;
+
 			if(!\is_string($class))
 				$class=__NAMESPACE__.'\\'.$n;
 
@@ -543,7 +549,3 @@ Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E):vo
 
 	BSOD($m,$c,$f,$l,\property_exists($E,'hint') ? $E->hint : null,\property_exists($E,'input') ? $E->input : null);
 });
-
-# IDN support
-\define('Eleanor\PUNYCODE',\filter_var($_SERVER['HTTP_HOST'] ?? '',\FILTER_VALIDATE_DOMAIN,\FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
-\define('Eleanor\DOMAIN',\str_starts_with(PUNYCODE,'xn--') ? Classes\Punycode::Domain(PUNYCODE,false) : PUNYCODE);

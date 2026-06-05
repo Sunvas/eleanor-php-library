@@ -5,14 +5,14 @@ namespace Eleanor\Classes;
 use Eleanor\Enums\DateFormat;
 use function Eleanor\BugFileLine;
 
-/** Localization */
+/** Localization loader and accessor */
 class L10n extends \Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L10n
 {
 	/** @var string Common language code */
-	static string $code='ru';
+	static string $code='en';
 
 	/** @var array L10n values from file */
-	protected readonly array $data;
+	protected array $data;
 
 	/** Filename of l10n file must be [name]-[code].php or [code].php (in case when name is empty). Contents:
 	 * <?php
@@ -43,53 +43,41 @@ class L10n extends \Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L
 		$this->data=$data;
 	}
 
-	/** Human representation of the date
+	/** Human-readable date formatting
 	 * @param int|string $d Date in plain format, or timestamp, or 0 or '' (for current date)
-	 * @param DateFormat $t
+	 * @param DateFormat $f
 	 * @return string */
-	static function Date(int|string$d,DateFormat$t=DateFormat::HumanDateTime):string
+	static function Date(int|string$d,DateFormat$f=DateFormat::HumanDateTime):string
 	{
-		$class=__NAMESPACE__.'\\l10n\\'.static::$code;
-		return \call_user_func([$class,'Date'],$d,$t);
+		$class=__NAMESPACE__.'\\L10n\\'.static::$code;
+		return $class::Date($d,$f);
 	}
 
-	/** Static obtaining value from existed l10n pool
-	 * @param array $l10n Pool of values
-	 * @param mixed $d Default value
-	 * @param string $f Fallback value
+	/** Get localized value from existing l10n data
+	 * @param array $l10n Localization values indexed by language code
+	 * @param mixed $d Default value returned when localization is not found
+	 * @param string $f Fallback l10n key
 	 * @return mixed */
 	static function Item(array$l10n,mixed$d=null,string$f=''):mixed
 	{
 		return $l10n[static::$code] ?? $l10n[$f] ?? $d;
 	}
 
-	/** Set value
-	 * @param string|int $offset Key
-	 * @param mixed $value Value */
-	function offsetSet(mixed$offset,mixed$value): void
+	function offsetSet(mixed$offset,mixed$value):void
 	{
 		$this->data[$offset]=$value;
 	}
 
-	/** Checking availability
-	 * @param string|int $offset Key
-	 * @return bool */
-	function offsetExists(mixed$offset): bool
+	function offsetExists(mixed$offset):bool
 	{
-		return isset($this->data[$offset]);
+		return \array_key_exists($offset,$this->data);
 	}
 
-	/** Deleting value
-	 * @param string|int $offset Key */
-	function offsetUnset(mixed$offset): void
+	function offsetUnset(mixed$offset):void
 	{
 		unset($this->data[$offset]);
 	}
 
-	/** Obtaining value
-	 * @param int|string $offset Key
-	 * @return mixed
-	 * @throws E */
 	function offsetGet(mixed$offset):mixed
 	{
 		return $this->data[$offset] ?? throw new E(
@@ -99,5 +87,5 @@ class L10n extends \Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L
 	}
 }
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return L10n::class;

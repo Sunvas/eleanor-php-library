@@ -11,7 +11,7 @@ enum Template_Type
 	case array;
 	case object;
 
-	/** Obtaining a type-specific templates
+	/** Get a type-specific template
 	 * @param mixed ...$a See description in methods below
 	 * @return ?string */
 	function Get(...$a):?string
@@ -47,7 +47,7 @@ enum Template_Type
 			if($content===1)
 				$content='';
 
-			return $content.\ob_get_contents();
+			return \ob_get_contents().$content;
 		}
 		finally
 		{
@@ -64,7 +64,7 @@ enum Template_Type
 	private function Array(string$n,array$p,array$a):?string
 	{
 		if(isset($a[$n]))
-			return($a[$n] instanceof \Closure ? \call_user_func_array($a[$n],$p) : $a[$n]);
+			return($a[$n] instanceof \Closure ? $a[$n](...$p) : $a[$n]);
 
 		return null;
 	}
@@ -78,11 +78,11 @@ enum Template_Type
 	private function Object(string$n,array$p,object$O):?string
 	{
 		# Support only for explicit methods
-		return \method_exists($O,$n) ? \call_user_func_array([$O,$n],$p) : null;
+		return \method_exists($O,$n) ? $O->$n(...$p) : null;
 	}
 }
 
-/** Шаблонизатор */
+/** Template loader and renderer */
 class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 {
 	/** Extension of processed files, must start with . */
@@ -98,7 +98,7 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	/** @var bool Flag allowing appending results to storage property */
 	protected bool $append=true;
 
-	/** @var Template $content Accessing object though content property disables appending and passes content of storage as 'content' variable to the next template */
+	/** @var Template $content Accessing object through content property disables appending and passes content of storage as 'content' variable to the next template */
 	public Template $content {
 		get{
 			$this->append=false;
@@ -130,15 +130,15 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 		{
 			$item=\array_pop($this->queue);
 
-			#Templates based on array
+			# Templates based on array
 			if(\is_array($item))
 				$this->loaded[]=[Template_Type::array,$item];
 
-			#Templates based on object
+			# Templates based on object
 			elseif(\is_object($item))
 				$this->loaded[]=[Template_Type::object,$item];
 
-			#Templates based on directory: there are files inside it
+			# Templates based on directory: there are files inside it
 			elseif(\is_dir($item))
 			{
 				$files=[];
@@ -151,7 +151,7 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 					$this->loaded[]=[Template_Type::dir,[\rtrim($item,'/\\'),$files]];
 			}
 
-			#Templates on file: either object or array
+			# Templates based on file: either object or array
 			elseif(\is_file($item))
 			{
 				\ob_start();
@@ -167,7 +167,7 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 
 		$vars=$this->default;
 
-		#Flushing storage as content variable
+		# Flushing storage as content variable
 		if(!$this->append)
 		{
 			$vars['content']=$this->storage;
@@ -176,12 +176,12 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 			$this->append=true;
 		}
 
-		#Searching for the template
+		# Searching for the template
 		foreach($this->loaded as [$Type,$item])
 		{
 			if($Type===Template_Type::dir)
 			{
-				#The only parameter passed as an array to the directory template is extracted as variables. This allows to pass &links.
+				# The only parameter passed as an array to the directory template is extracted as variables. This allows to pass &links.
 				$extract??=isset($a[0]) && \count($a)==1 && \is_array($a[0]);
 
 				$result=$Type->Get($n,($extract ? $a[0] : $a)+$vars,static::EXT,...$item);
@@ -199,7 +199,7 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	/** Set default variable or append template source to the queue
 	 * @param ?string $offset Key
 	 * @param mixed $value Value */
-	function offsetSet(mixed$offset,mixed$value): void
+	function offsetSet(mixed$offset,mixed$value):void
 	{
 		if($offset===null)
 			$this->queue[]=$value;
@@ -207,17 +207,17 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 			$this->default[$offset]=$value;
 	}
 
-	/** Checking availability of default variable
+	/** Check default variable availability
 	 * @param string $offset Key
 	 * @return bool */
-	function offsetExists(mixed$offset): bool
+	function offsetExists(mixed$offset):bool
 	{
-		return isset($this->default[$offset]);
+		return \array_key_exists($offset,$this->default);
 	}
 
 	/** Unset default variable
 	 * @param string $offset Key */
-	function offsetUnset(mixed$offset): void
+	function offsetUnset(mixed$offset):void
 	{
 		unset($this->default[$offset]);
 	}

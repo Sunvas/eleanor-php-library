@@ -99,7 +99,7 @@ Last happened: {$data['d']}, total: {$data['n']}
 LOG;
 		else
 		{
-			$data['u']=Uri::$current;
+			$data['u']=Uri::$raw;
 			$log.=<<<LOG
 File: {$data['f']}[{$data['l']}]
 URL: {$data['u']}

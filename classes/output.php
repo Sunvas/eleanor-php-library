@@ -2,14 +2,14 @@
 # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
 
-/** Outputting content to the browser */
+/** HTTP response output helper */
 class Output extends \Eleanor\Basic
 {
-	/** @const Powered by header. Feel free to modify it whatever you want! */
+	/** @const Powered-by HTTP header. Feel free to modify it whatever you want! */
 	protected const string POWERED='X-Powered-CMS: Eleanor PHP Library https://eleanor-cms.com/library';
 
 	/** Attempt to return 304 http code (Not Modified) when browser's cache is up to date
-	 * @param string $etag Etag for checking (via str_contains)
+	 * @param string $etag ETag for checking (via str_contains)
 	 * @return bool */
 	static function Return304(string$etag=''):bool
 	{
@@ -18,7 +18,7 @@ class Output extends \Eleanor\Basic
 		if($etag)
 			$match=\str_contains($if_match,$etag);
 
-		//Etag contains expired time
+		# ETag contains expired time
 		elseif(\preg_match('#e=(\d{,12})#',$if_match,$matches)>0)
 		{
 			$timestamp=\Eleanor\BASE_TIME+(int)$matches[1];
@@ -30,7 +30,7 @@ class Output extends \Eleanor\Basic
 		if($match)
 			\header(static::POWERED,true,304);
 
-		return$match;
+		return $match;
 	}
 
 	/** @var array Storage of nonce */
@@ -50,16 +50,17 @@ class Output extends \Eleanor\Basic
 
 		static::$nonces[$bytes]=$hash;
 
-		return$hash;
+		return $hash;
 	}
 
 	/** @var array For the link header */
 	protected static array $links=[];
 
-	/** Adding item to the link header
-	 * @param string $url Link to resource
-	 * @param string $rel Should be "preconnect" or "preload" */
-	static function Link(string$url,string$rel='preconnect',...$a):void
+	/** Add resource hint to the HTTP Link header.
+	 * @param string $url Resource URL
+	 * @param string $rel Link relation type.  Usually "preconnect" or "preload".
+	 * @param string ...$a Additional Link header parameters */
+	static function Link(string$url,string$rel='preconnect',string...$a):void
 	{
 		static::$links[]="<{$url}>; rel=".$rel.($a ? '; '.\http_build_query($a,'','; ') : '');
 	}
@@ -71,11 +72,13 @@ class Output extends \Eleanor\Basic
 		TEXT='text/plain',
 		JSON='application/json';
 
-	/** Sending system headers (before echo)
-	 * @param string $mimetype Content type (xml,html,text,json)
-	 * @param int $code Status code
-	 * @param string|int $cache int specifies the number of seconds for which the result should be cached, string means etag content
-	 * @return bool Successful flag */
+	/** Send system HTTP headers. Must be called before any output is sent.
+	 * @param string $mimetype Response content type (xml, html, text, json, etc..)
+	 * @param int $code HTTP status code
+	 * @param string|int $cache Cache control parameter:
+	 *     - int: cache lifetime in seconds
+	 *     - string: ETag content
+	 * @return bool */
 	static function SendHeaders(string$mimetype=self::TEXT,int$code=200,int|string$cache=604800):bool
 	{
 		if(\headers_sent())
@@ -83,7 +86,7 @@ class Output extends \Eleanor\Basic
 
 		if($cache)
 		{
-			//Безусловный кэш на N Секунд
+			# Unconditional cache for N seconds
 			if(\is_int($cache))
 			{
 				$age='immutable, max-age='.$cache;
@@ -99,7 +102,7 @@ class Output extends \Eleanor\Basic
 			\header("ETag: \"{$etag}\"");
 		}
 
-		#Without cache
+		# Without cache
 		else
 			\header('Cache-Control: no-cache, no-store');
 
@@ -115,7 +118,7 @@ class Output extends \Eleanor\Basic
 			\header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic'");
 
 		if($is_html and static::$links)
-			header('Link: '.join(', ',static::$links));
+			\header('Link: '.join(', ',static::$links));
 
 		if(static::POWERED)
 			\header(static::POWERED);
@@ -126,5 +129,5 @@ class Output extends \Eleanor\Basic
 	}
 }
 
-#Not necessary here, since class name equals filename
+# Not required here because class name matches filename
 return Output::class;
