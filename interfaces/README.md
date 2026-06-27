@@ -53,7 +53,7 @@ The autoloader resolves interfaces exclusively by file name. The actual namespac
 
 ### 3. Returning fully qualified interface names (FQCN)
 
-If the interface declared inside the file does not match the expected interface name inside `Eleanor\Interfaces`, the file must return the fully qualified class name (FQCN):
+If the interface declared inside the file does not match the expected interface name inside `Eleanor\Interfaces`, the file must return the fully qualified interface name (FQCN):
 
 ```php
 return \Vendor\Package\SomeInterface::class;

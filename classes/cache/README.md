@@ -50,7 +50,7 @@ The `$ttl` argument is the time-to-live in seconds. The default value is `86400`
 
 ## Cache Misses
 
-Cache engines do not all report misses in the same way. Some return `null`, while others return `false`. Code using cache adapters should treat both `null` and `false` as cache miss or read failure markers. Avoid storing `false` when a cache miss must be distinguishable from a cached value.
+Cache engines do not all report misses in the same way. Some return `null`, while others return `false`. Code using cache adapters should treat both `null` and `false` as cache miss or read failure tokens. Avoid storing `false` when a cache miss must be distinguishable from a cached value.
 
 ## Adding a New Engine
 

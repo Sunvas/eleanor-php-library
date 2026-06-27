@@ -73,7 +73,7 @@ class Output extends \Eleanor\Basic
 		JSON='application/json';
 
 	/** Send system HTTP headers. Must be called before any output is sent.
-	 * @param string $mimetype Response content type (xml, html, text, json, etc..)
+	 * @param string $mimetype Response content type (xml, html, text, json, etc...)
 	 * @param int $code HTTP status code
 	 * @param string|int $cache Cache control parameter:
 	 *     - int: cache lifetime in seconds

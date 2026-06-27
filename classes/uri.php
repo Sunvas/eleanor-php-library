@@ -52,7 +52,7 @@ class Uri extends \Eleanor\Basic
 	}
 
 	/** Generate relative URI
-	 * @param array $slugs Clean URL parts (slugs)
+	 * @param string[] $slugs Clean URL parts (slugs)
 	 * @param string $ending Ending of URI
 	 * @param array $q Query
 	 * @return string */

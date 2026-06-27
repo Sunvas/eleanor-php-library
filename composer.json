@@ -1,17 +1,28 @@
 {
-  "name": "sunvas/eleanor-php-library",
-  "description": "Fucking perfect PHP library designed for serving up SPA (single page applications) and bloat-free websites.",
-  "minimum-stability": "stable",
-  "keywords": ["php","php-library","php8","php8-library"],
+  "authors": [{
+      "name": "Alexnader Sunvas",
+      "email": "library@sunvas.online"
+  }],
+  "autoload": {
+    "files": ["core.php"]
+  },
+  "description": "Frameworkless PHP library for building SPA and bloat-free websites.",
   "homepage": "https://eleanor-cms.com/library",
+  "keywords": ["php", "library", "frameworkless", "spa", "cms", "shared-hosting"],
   "license": "MIT",
-  "authors": [
-	{
-	  "name": "Alexnader Sunvas",
-	  "email": "library@sunvas.online"
-	}
-  ],
+  "minimum-stability": "stable",
+  "name": "sunvas/eleanor-php-library",
+  "type": "library",
   "require": {
-    "php": ">=8.5.0"
+    "php": ">=8.5"
+  },
+  "suggest": {
+    "ext-memcache": "Required for Memcache cache engine",
+    "ext-memcached": "Required for Memcached cache engine",
+    "ext-shmop": "Required for shared memory cache engine"
+  },
+  "support": {
+    "issues": "https://github.com/Sunvas/eleanor-php-library/issues",
+    "source": "https://github.com/Sunvas/eleanor-php-library"
   }
 }
