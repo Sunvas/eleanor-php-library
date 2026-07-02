@@ -27,7 +27,7 @@ class Memcache implements \Eleanor\Interfaces\Cache
 		{
 			$this->M->close();
 			throw new E('Memcache server is unavailable',E::SYSTEM,
-				hint:'Try removing the file library/classes/cache/memcache.php',
+				hint:'Try removing the file '.__FILE__,
 				input:['host'=>static::$host,'port'=>static::$port]
 			);
 		}

@@ -25,7 +25,7 @@ class Memcached implements \Eleanor\Interfaces\Cache
 		# Since this cache engine is highly environment-specific, valid configuration values are recommended
 		if(!$this->M->addServer(static::$host,static::$port))
 			throw new E('Memcached server is unavailable',E::SYSTEM,
-				hint:'Try removing the file library/classes/cache/memcached.php',
+				hint:'Try removing the file '.__FILE__,
 				input:['host'=>static::$host,'port'=>static::$port]
 			);
 	}
