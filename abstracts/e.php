@@ -146,7 +146,7 @@ abstract class E extends \Exception implements Loggable
 			$json[$id]=[$offset,$length,$data];
 			$json=\json_encode($json,\JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
 
-			$r=\json_last_error()===\JSON_ERROR_NONE and \file_put_contents($path2json,$json,\LOCK_EX)===\strlen($json);
+			$r=\json_last_error()===\JSON_ERROR_NONE && \file_put_contents($path2json,$json,\LOCK_EX)===\strlen($json);
 		}
 		else
 			$r=false;

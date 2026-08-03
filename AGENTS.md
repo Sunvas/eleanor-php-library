@@ -86,13 +86,13 @@ Logging should remain useful for debugging production systems.
 
 Documentation is part of the source code.
 
-Comments and PHPDoc should explain behaviour, intent, or rationale rather
+Comments and PHPDoc should explain behavior, intent, or rationale rather
 than repeat what is already obvious from the implementation.
 
 Describe what the code does from the caller's perspective, not how it is
 implemented internally.
 
-When behaviour is non-trivial, describe it explicitly instead of using
+When behavior is non-trivial, describe it explicitly instead of using
 generic phrases such as "Get value" or "Set property".
 
 Keep comments concise.
@@ -166,7 +166,7 @@ When suggesting changes:
 - preserve the existing architecture;
 - preserve project terminology;
 - preserve the public API whenever possible;
-- improve readability without changing behaviour;
+- improve readability without changing behavior;
 - prefer evolutionary improvements over rewrites.
 
 Do not automatically suggest:
