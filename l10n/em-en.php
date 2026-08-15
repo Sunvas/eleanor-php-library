@@ -8,13 +8,13 @@ return[
 
 		if($error)
 			$error=<<<HTML
-: <b>{$error}</b> (error #<b>{$errno}</b>)
+: <b>$error</b> (error #<b>$errno</b>)
 HTML;
 		else
 			$error='.';
 
 		return<<<HTML
-Can't connect to database {$db}{$error}
+Can't connect to database $db$error
 HTML;
 	},
 
@@ -23,7 +23,7 @@ HTML;
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
 		return<<<HTML
-SQL query failed: <b>{$error}</b> (error #{$errno})
+SQL query failed: <b>$error</b> (error #$errno)
 HTML;
 	},
 
@@ -32,14 +32,14 @@ HTML;
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
 		return<<<HTML
-Prepared statement failed: <b>{$error}</b> (error #{$errno})
+Prepared statement failed: <b>$error</b> (error #$errno)
 HTML;
 	},
 
 	/** Error in value: it is expected that each value passed to DB should be of a primitive type (scalar or null) */
 	'value'=>function($type,$name){
 		return<<<HTML
-<code>{$type}</code> was passed as value of <code>{$name}</code>
+<code>$type</code> was passed as value of <code>$name</code>
 HTML;
 	},
 
@@ -53,7 +53,7 @@ HTML;
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
 		return<<<HTML
-MySQL failed: <b>{$error}</b> (error #{$errno})
+MySQL failed: <b>$error</b> (error #$errno)
 HTML;
 	},
 ];

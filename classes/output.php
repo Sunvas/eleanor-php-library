@@ -62,7 +62,7 @@ class Output extends \Eleanor\Basic
 	 * @param string ...$a Additional Link header parameters */
 	static function Link(string$url,string$rel='preconnect',string...$a):void
 	{
-		static::$links[]="<{$url}>; rel=".$rel.($a ? '; '.\http_build_query($a,'','; ') : '');
+		static::$links[]="<$url>; rel=$rel".($a ? '; '.\http_build_query($a,'','; ') : '');
 	}
 
 	/** @const The most used mime types for SendHeaders */
@@ -99,7 +99,7 @@ class Output extends \Eleanor\Basic
 			}
 
 			\header('Cache-Control: private, no-transform, '.$age);
-			\header("ETag: \"{$etag}\"");
+			\header("ETag: \"$etag\"");
 		}
 
 		# Without cache
@@ -112,7 +112,7 @@ class Output extends \Eleanor\Basic
 		{
 			$nonces=\join("' 'nonce-",static::$nonces);
 
-			\header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic' 'nonce-{$nonces}'");
+			\header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic' 'nonce-$nonces'");
 		}
 		elseif($is_html)
 			\header("Content-Security-Policy: frame-ancestors 'self'; script-src 'unsafe-eval' 'strict-dynamic'");
@@ -123,7 +123,7 @@ class Output extends \Eleanor\Basic
 		if(static::POWERED)
 			\header(static::POWERED);
 
-		\header("Content-Type: {$mimetype}; charset=utf-8",true,$code);
+		\header("Content-Type: $mimetype; charset=utf-8",true,$code);
 
 		return true;
 	}

@@ -40,11 +40,11 @@ class Otp extends \Eleanor\Basic
 	/** Verify TOTP code.
 	 * @param string $secret Secret in raw format
 	 * @param string $code Code entered by user
-	 * @param int $window Number of previous/next time steps accepted
 	 * @param int $step Time step in seconds
 	 * @param int $digits Number of digits in generated code
+	 * @param int $window Number of previous/next time steps accepted
 	 * @return bool */
-	static function Verify(string$secret,string$code,int$window=1,int$step=30,int$digits=6):bool
+	static function Verify(string$secret,string$code,int$step=30,int$digits=6,int$window=1):bool
 	{
 		$time=\time();
 

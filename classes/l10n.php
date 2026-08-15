@@ -18,7 +18,7 @@ class L10n extends \Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L
 	 * <?php
 	 * return [
 	 *  'param1'=>'string value',
-	 *  'param2'=>fn($v)=>"complex {$v} value",
+	 *  'param2'=>fn($v)=>"complex $v value",
 	 *   ...
 	 * ];
 	 * @param string $name Name of l10n file
@@ -81,7 +81,7 @@ class L10n extends \Eleanor\Basic implements \ArrayAccess, \Eleanor\Interfaces\L
 	function offsetGet(mixed$offset):mixed
 	{
 		return $this->data[$offset] ?? throw new E(
-			"Unable to get translation key '{$offset}'",
+			"Unable to get translation key '$offset'",
 			E::PHP,...BugFileLine()
 		);
 	}

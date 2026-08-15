@@ -8,13 +8,13 @@ return[
 
 		if($error)
 			$error=<<<HTML
-: <b>{$error}</b> (error #<b>{$errno}</b>)
+: <b>$error</b> (error #<b>$errno</b>)
 HTML;
 		else
 			$error='.';
 
 		return<<<HTML
-Невозможно подключиться к базе данных {$db}{$error}
+Невозможно подключиться к базе данных $db$error
 HTML;
 	},
 
@@ -23,7 +23,7 @@ HTML;
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
 		return<<<HTML
-SQL запрос не выполнился: <b>{$error}</b> (error #{$errno})
+SQL запрос не выполнился: <b>$error</b> (error #$errno)
 HTML;
 	},
 
@@ -32,14 +32,14 @@ HTML;
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
 		return<<<HTML
-Prepared statement не выполнился: <b>{$error}</b> (error #{$errno})
+Prepared statement не выполнился: <b>$error</b> (error #$errno)
 HTML;
 	},
 
 	/** Ошибка в значении: ожидается, что каждое передаваемое в БД значение будет примитивом (scalar или null) */
 	'value'=>function($type,$name){
 		return<<<HTML
-В качестве значения <code>{$name}</code> передано <code>{$type}</code>.
+В качестве значения <code>$name</code> передано <code>$type</code>.
 HTML;
 	},
 
@@ -53,7 +53,7 @@ HTML;
 		$error=htmlspecialchars($error,$ent,Eleanor\CHARSET,false);
 
 		return<<<HTML
-Ошибка в MySQL: <b>{$error}</b> (error #{$errno})
+Ошибка в MySQL: <b>$error</b> (error #$errno)
 HTML;
 	},
 ];
