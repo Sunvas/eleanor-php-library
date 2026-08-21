@@ -61,13 +61,13 @@ class Uri extends \Eleanor\Basic
 		$r=[];
 
 		foreach($slugs as $v)
-			$r[]=\is_int($v) ? $v : \urlencode((string)$v);
+			$r[]=\is_int($v) ? $v : \urlencode($v);
 
 		return \join('/',$r).($r ? $ending : '').($q ? static::Query($q) : '');
 	}
 
 	/** Generate query string
-	 * @param array $a Parameters for query
+	 * @param array $a Parameters for query. Elements with integer keys are treated as raw query fragments.
 	 * @param bool $q Add ? to the beginning, if it was possible to assemble query string
 	 * @param string $d Separator of parameters
 	 * @return string */
@@ -77,14 +77,20 @@ class Uri extends \Eleanor\Basic
 
 		foreach($a as $k=>$v)
 		{
+			if(\is_int($k))
+			{
+				$r[]=$v;
+				continue;
+			}
+
 			$k=\urlencode($k);
 
-			if(\is_array($v))
-				static::QueryParam($v,$k.'%5B',$r);//[
+			if(\is_int($v))
+				$r[]=$k.'='.$v;
 			elseif(\is_string($v))
 				$r[]=$k.'='.\urlencode($v);
-			elseif(\is_int($v))
-				$r[]=$k.'='.$v;
+			elseif(\is_array($v))
+				self::Nested($v,$k,$r);# [
 			elseif($v)
 				$r[]=$k;
 		}
@@ -93,18 +99,27 @@ class Uri extends \Eleanor\Basic
 	}
 
 	/** Generate nested query parameters for Query().
-	 * @param array $a Parameters
-	 * @param string $p Prefix for each param
+	 * @param array $a Parameters to serialize.
+	 * @param string $p Prefix name for each param
 	 * @param array &$r Reference for placing results */
-	protected static function QueryParam(array$a,string$p,array &$r):void
+	private static function Nested(array$a,string$p,array&$r):void
 	{
+		$p.='%5B';# [
 		$is_list=\array_is_list($a);
 
-		foreach($a as $k=>&$v)
-			if(\is_array($v))
-				static::QueryParam($v,$p.$k.'%5D%5B',$r);//][
-			else
-				$r[]=$p.($is_list ? '' : \urlencode($k)).'%5D='.(\is_int($v) ? $v : \urlencode((string)$v));
+		foreach($a as $k=>$v)
+		{
+			$k=$p.($is_list ? '' : \urlencode($k)).'%5D';# ]
+
+			if(\is_int($v))
+				$r[]=$k.'='.$v;
+			elseif(\is_string($v))
+				$r[]=$k.'='.\urlencode($v);
+			elseif(\is_array($v))
+				self::Nested($v,$k,$r);# [
+			elseif($v)
+				$r[]=$k;
+		}
 	}
 }
 

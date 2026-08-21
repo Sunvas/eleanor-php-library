@@ -15,16 +15,20 @@ abstract class Append extends \Eleanor\Basic implements \Stringable
 	/** @var string Accumulator for generated method results */
 	protected string $storage='';
 
-	/** @var array Property names shared by reference between primary and cloned instances */
-	protected array $linking=[] {
-		/** @throws E */
-		set=>\array_all($value,fn($item)=>\property_exists($this,$item) || throw new E("Linked property $item does not exist",E::PHP,...\Eleanor\BugFileLine($this))) ? $value : [];
+	/** @var Append Provide clone of this object for secondary instances */
+	protected self $clone {
+		get=>clone$this;
 	}
 
 	/** Initialize the primary builder instance */
 	function __construct()
 	{
 		$this->primary=true;
+	}
+
+	function __clone()
+	{
+		$this->primary=false;
 	}
 
 	/** Return accumulated string and clear accumulator.
@@ -53,13 +57,7 @@ abstract class Append extends \Eleanor\Basic implements \Stringable
 	{
 		if($this->primary)
 		{
-			$O=clone($this,[
-				'primary'=>false
-			]);
-
-			foreach($O->linking as $v)
-				$O->$v=&$this->$v;
-
+			$O=$this->clone;
 			$O->storage.=$O->_($n,...$a);
 
 			return $O;

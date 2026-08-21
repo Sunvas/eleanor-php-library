@@ -4,7 +4,7 @@ namespace Eleanor\Classes;
 
 /** Lightweight TOTP helper based on HMAC-SHA256.
  * The recommended size of a secret is 32 bytes (256 bits), can be generated via random_bytes(32). */
-class Otp extends \Eleanor\Basic
+class TOTP extends \Eleanor\Basic
 {
 	const string
 		ALGO='sha256',
@@ -13,10 +13,10 @@ class Otp extends \Eleanor\Basic
 	/** Generate current TOTP code.
 	 * @param string $secret Secret in raw format
 	 * @param ?int $time Unix timestamp. Current time is used when null
-	 * @param int $step Time step in seconds
 	 * @param int $digits Number of digits in generated code
+	 * @param int $step Time step in seconds
 	 * @return string */
-	static function Code(string$secret,?int$time=null,int$step=30,int$digits=6):string
+	static function Code(string$secret,?int$time=null,int$digits=6,int$step=30):string
 	{
 		$time??=\time();
 		$counter=\intdiv($time,$step);
@@ -40,16 +40,16 @@ class Otp extends \Eleanor\Basic
 	/** Verify TOTP code.
 	 * @param string $secret Secret in raw format
 	 * @param string $code Code entered by user
-	 * @param int $step Time step in seconds
 	 * @param int $digits Number of digits in generated code
+	 * @param int $step Time step in seconds
 	 * @param int $window Number of previous/next time steps accepted
 	 * @return bool */
-	static function Verify(string$secret,string$code,int$step=30,int$digits=6,int$window=1):bool
+	static function Verify(string$secret,string$code,int$digits=6,int$step=30,int$window=1):bool
 	{
 		$time=\time();
 
 		for($i=-$window;$i<=$window;$i++)
-			if(\hash_equals(static::Code($secret,$time+$i*$step,$step,$digits),$code))
+			if(\hash_equals(static::Code($secret,$time+$i*$step,$digits,$step),$code))
 				return true;
 
 		return false;
@@ -58,11 +58,11 @@ class Otp extends \Eleanor\Basic
 	/** Generate otpauth URI for QR code.
 	 * @param string $issuer Site or application name
 	 * @param string $account User login or account label
-	 * @param string $secret Secret in raw format
-	 * @param int $step Time step in seconds
+	 * @param string $secret Secret in raw format should be generated via random_bytes(32)
 	 * @param int $digits Number of digits in generated code
+	 * @param int $step Time step in seconds
 	 * @return string */
-	static function URI(string$issuer,string$account,string$secret,int$step=30,int$digits=6):string
+	static function URI(string$issuer,string$account,string$secret,int$digits=6,int$step=30):string
 	{
 		$acc=\rawurlencode($issuer.':'.$account);
 		$issuer=\rawurlencode($issuer);
@@ -92,4 +92,4 @@ class Otp extends \Eleanor\Basic
 }
 
 # Not required here because class name matches filename
-return Otp::class;
+return TOTP::class;

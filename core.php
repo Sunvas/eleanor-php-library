@@ -287,21 +287,24 @@ abstract class Basic
  * with the real object instance. Useful for expensive services that may not be needed during every request. */
 class Assign extends Basic implements \ArrayAccess
 {
-	/** @var ?array Arguments passed to the creator closure */
-	public ?array $args;
+	/** @var array|\Closure Arguments passed to the creator closure */
+	public array|\Closure $args;
 
 	/** @param ?object &$link Reference that will receive the created object
 	 * @param \Closure $Creator Closure that creates and returns the target object
 	 * @param mixed ...$args Arguments passed to the creator closure */
 	function __construct(protected ?object&$link,protected \Closure$Creator,...$args)
 	{
-		$this->args=$args ?: null;
+		$this->args=$args;
 	}
 
 	/** Create the target object and replace the proxy reference with it */
 	function Create():void
 	{
-		$this->link=\call_user_func_array($this->Creator,$this->args ?? []);
+		$this->link=\call_user_func_array(
+			$this->Creator,
+			\is_array($this->args) ? $this->args : (array)\call_user_func($this->args)
+		);
 	}
 
 	/** Bind the variable to the lazy object creator */

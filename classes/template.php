@@ -55,7 +55,7 @@ enum Template_Type
 		}
 	}
 
-	/** Templates based on array. Variables are supported only for \Closure-s. The requirements for \Closure are equal
+	/** Templates based on arrays. Variables are supported only for \Closure-s. The requirements for \Closure are equal
 	 * to those for object methods - see below.
 	 * @param string $n Template name
 	 * @param array $p List of variables
@@ -96,25 +96,38 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	protected(set) array $queue=[];
 
 	/** @var bool Flag allowing appending results to storage property */
-	protected bool $append=true;
+	private bool $append=true;
 
 	/** @var Template $content Accessing object through content property disables appending and passes content of storage as 'content' variable to the next template */
-	public Template $content {
+	public self $content {
 		get{
 			$this->append=false;
 			return $this;
 		}
 	}
 
+	/** @var Template Provide clone of this object for secondary instances */
+	protected self $clone {
+		get{
+			$clone=clone$this;
+
+			$clone->queue=&$this->queue;
+			$clone->loaded=&$this->loaded;
+			$clone->default=&$this->default;
+
+			return $clone;
+		}
+	}
+
 	/** @var array $loaded Loaded templates [type, contents] */
-	protected array $loaded=[];
+	private array $loaded=[];
 
 	/** @param array|string $queue See description above
-	 * @var array $default Default variables being passed to all templates. Are set via ArrayAccess offsetSet */
-	function __construct(array|string$queue=[],protected(set) array$default=[])
+	 * @var array $default Default variables being passed to all templates. Can be accessed via ArrayAccess
+	 * @var array $computed Array of closures: computed variables being passed to all templates. */
+	function __construct(array|string$queue=[],private array$default=[],private array$computed=[])
 	{
 		$this->queue=(array)$queue;
-		$this->linking=['default','queue','loaded'];
 
 		parent::__construct();
 	}
@@ -167,6 +180,10 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 
 		$vars=$this->default;
 
+		# Computed variables
+		foreach($this->computed as $k=>$v)
+			$vars[$k]=$v();
+
 		# Flushing storage as content variable
 		if(!$this->append)
 		{
@@ -196,13 +213,15 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 		throw new E("Template '$n' not found",E::PHP,...BugFileLine($this));
 	}
 
-	/** Set default variable or append template source to the queue
+	/** Set a default variable or append the template source to the queue
 	 * @param ?string $offset Key
-	 * @param mixed $value Value */
+	 * @param mixed $value Value. If value is a static \Closure, it is assumed to be a computed variable. */
 	function offsetSet(mixed$offset,mixed$value):void
 	{
 		if($offset===null)
 			$this->queue[]=$value;
+		elseif(($value instanceof \Closure) && new \ReflectionFunction($value)->isStatic())
+			$this->computed[$offset]=$value;
 		else
 			$this->default[$offset]=$value;
 	}
@@ -212,14 +231,14 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	 * @return bool */
 	function offsetExists(mixed$offset):bool
 	{
-		return \array_key_exists($offset,$this->default);
+		return \array_key_exists($offset,$this->default) || \array_key_exists($offset,$this->computed);
 	}
 
 	/** Unset default variable
 	 * @param string $offset Key */
 	function offsetUnset(mixed$offset):void
 	{
-		unset($this->default[$offset]);
+		unset($this->default[$offset],$this->computed[$offset]);
 	}
 
 	/** Get default variable value. Undefined variables will return null, allowing you to create multidimensional arrays in a single line.
@@ -227,6 +246,9 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	 * @return mixed */
 	function &offsetGet(mixed$offset):mixed
 	{
+		if(isset($this->computed[$offset]))
+			return $this->computed[$offset]();
+
 		if(!isset($this->default[$offset]))
 			$this->default[$offset]=null;
 
