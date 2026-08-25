@@ -198,7 +198,7 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 		{
 			if($Type===Template_Type::dir)
 			{
-				# The only parameter passed as an array to the directory template is extracted as variables. This allows to pass &links.
+				# The only parameter passed as an array to the directory template is extracted as variables. This allows passing &links.
 				$extract??=isset($a[0]) && \count($a)==1 && \is_array($a[0]);
 
 				$result=$Type->Get($n,($extract ? $a[0] : $a)+$vars,static::EXT,...$item);
