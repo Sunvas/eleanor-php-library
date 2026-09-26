@@ -78,7 +78,7 @@ class Files extends \Eleanor\Basic
 		}
 
 		# If symlink is broken, file_exists can't identify it
-		return !file_exists($path) || unlink($path);
+		return !\file_exists($path) || \unlink($path);
 	}
 
 	/** Ideological copy of \substr_replace, but for files.

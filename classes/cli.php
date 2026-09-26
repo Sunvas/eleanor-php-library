@@ -88,7 +88,7 @@ class CLI extends \Eleanor\Abstracts\Append
 	protected function _(string$n,...$a):string
 	{
 		$code=match($n){
-			#Colors for text
+			# Colors for text
 			'black'=>30,
 			'red'=>31,
 			'green'=>32,
@@ -98,7 +98,7 @@ class CLI extends \Eleanor\Abstracts\Append
 			'cyan'=>36,
 			'white'=>37,
 
-			#High Intensity colors for text
+			# High Intensity colors for text
 			'BLACK'=>90,
 			'RED'=>91,
 			'GREEN'=>92,
@@ -108,7 +108,7 @@ class CLI extends \Eleanor\Abstracts\Append
 			'CYAN'=>96,
 			'WHITE'=>97,
 
-			#Colors for background
+			# Colors for background
 			'_black'=>40,
 			'_red'=>41,
 			'_green'=>42,
@@ -118,7 +118,7 @@ class CLI extends \Eleanor\Abstracts\Append
 			'_cyan'=>46,
 			'_white'=>47,
 
-			#High Intensity colors for background
+			# High Intensity colors for background
 			'_BLACK'=>100,
 			'_RED'=>101,
 			'_GREEN'=>102,
@@ -128,7 +128,7 @@ class CLI extends \Eleanor\Abstracts\Append
 			'_CYAN'=>106,
 			'_WHITE'=>107,
 
-			#Style
+			# Style
 			'bold'=>1,
 			'underline'=>4,
 			'strikethrough'=>9,
@@ -137,11 +137,12 @@ class CLI extends \Eleanor\Abstracts\Append
 			default=>throw new E('Unknown CLI style',E::PHP,...\Eleanor\BugFileLine($this),input:['name'=>$n])
 		};
 
+		$s=\join('',$a);
+
 		# If text is provided
-		if($a)
+		if($s!=='')
 		{
 			$c=$this->opened ? ",{$code}m" : "\e[{$code}m";
-			$s=\join('',$a);
 
 			$this->length+=\strlen($s);
 			$this->opened=false;
@@ -157,17 +158,17 @@ class CLI extends \Eleanor\Abstracts\Append
 	}
 
 	/** Writing content to a stream
-	 * @param bool $eol Option to terminate string
 	 * @param resource $stream  of an opened stream
+	 * @param bool $cr Carriage return
 	 * @return static */
-	function Write(bool$eol=true,mixed$stream=\STDOUT):static
+	function Write(mixed$stream=\STDOUT,bool$cr=false):static
 	{
 		$length=$this->length;
 		$spaces=$this->prev_len>$length ? \str_repeat(' ',$this->prev_len-$length) : '';
 
-		\fwrite($stream, $this.$spaces.($eol ? \PHP_EOL : "\r"));
+		\fwrite($stream, $this.$spaces.($cr ? "\r" : ''));
 
-		$this->prev_len=$eol ? 0 : $length;
+		$this->prev_len=$cr ? $length : 0;
 
 		return $this;
 	}
