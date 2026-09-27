@@ -165,13 +165,14 @@ function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=n
 		\ob_clean();
 
 	if(Library::$cli)
-	{
 		\fwrite(\STDERR, $out);
-		die;
+	else
+	{
+		Output::SendHeaders(Library::$bsodtype,503);
+		echo$out;
 	}
 
-	Output::SendHeaders(Library::$bsodtype,503);
-	die($out);
+	exit(1);
 }
 
 /** Namespace-aware class autoloader with support for class aliases, lowercase filenames, and kebab-case filenames.

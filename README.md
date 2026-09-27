@@ -59,6 +59,7 @@ The library already includes:
 - cache machines;
 - MySQL driver;
 - localization subsystem;
+- TOTP generation and verification;
 - delayed object initialization;
 - structured error logging;
 - coherent integration for third-party classes, interfaces, traits, and enums.
