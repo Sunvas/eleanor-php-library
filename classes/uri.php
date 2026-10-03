@@ -124,7 +124,7 @@ class Uri extends \Eleanor\Basic
 }
 
 # Get raw URI without site directory prefix
-Uri::$raw=\substr($_SERVER['REQUEST_URI'],\strlen(\Eleanor\SITEDIR));
+Uri::$raw=\substr($_SERVER['REQUEST_URI'] ?? '',\strlen(\Eleanor\SITEDIR));
 
 # Not required here because class name matches filename
 return Uri::class;

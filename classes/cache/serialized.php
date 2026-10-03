@@ -53,7 +53,10 @@ class Serialized implements \Eleanor\Interfaces\Cache
 		$mtime=@\filemtime($f);
 
 		if($mtime!==BASE_TIME and $mtime<\time())
+		{
+			@unlink($f);
 			return null;
+		}
 
 		$s=\file_get_contents($f);
 

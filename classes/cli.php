@@ -4,7 +4,8 @@ namespace Eleanor\Classes;
 
 /** Class provides convenient text formatting for terminal output using ANSI escape sequences. It supports foreground
  * and background colors, as well as additional text styles for improving readability and highlighting important
- * information in command-line applications.
+ * information in command-line applications. Multibyte text (UTF-8, Cyrillic, etc.) is not supported — outputs may
+ * misalign when using Write() with carriage return for in-place updates.
  *
  * Supported foreground colors:
  * black, red, green, yellow, blue, purple, cyan, white
@@ -69,7 +70,6 @@ class CLI extends \Eleanor\Abstracts\Append
 	{
 		if($this->opened)
 		{
-			$this->length++;
 			$this->storage.='m';
 			$this->opened=false;
 		}

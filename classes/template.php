@@ -32,7 +32,7 @@ enum Template_Type
 	 * @return ?string */
 	private function Dir(string$n,array$p,string$ext,string$path,array$files):?string
 	{
-		if(!\in_array($n,$files))
+		if(!\in_array($n,$files,true))
 			return null;
 
 		try
@@ -92,13 +92,15 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	 * string as paths to folder with files;
 	 * string as paths to file returning array or object;
 	 * object;
-	 * array; */
+	 * array;
+	 * Sources are checked in reverse appending order: the last added source has the highest priority. */
 	protected(set) array $queue=[];
 
 	/** @var bool Flag allowing appending results to storage property */
 	private bool $append=true;
 
-	/** @var Template $content Accessing object through content property disables appending and passes content of storage as 'content' variable to the next template */
+	/** @var Template $content Accessing object through content property disables appending and passes content of storage as 'content' variable to the next template. Intended usage:
+	 * $T->Header(...)->content->Page(...) */
 	public self $content {
 		get{
 			$this->append=false;
@@ -114,6 +116,7 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 			$clone->queue=&$this->queue;
 			$clone->loaded=&$this->loaded;
 			$clone->default=&$this->default;
+			$clone->computed=&$this->computed;
 
 			return $clone;
 		}
@@ -156,7 +159,7 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 			{
 				$files=[];
 
-				foreach(\scandir($item) as $f)
+				foreach(\scandir($item) ?: [] as $f)
 					if(\str_ends_with($f,static::EXT))
 						$files[]=\strrchr($f,'.',true);
 
@@ -247,7 +250,11 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 	function &offsetGet(mixed$offset):mixed
 	{
 		if(isset($this->computed[$offset]))
-			return $this->computed[$offset]();
+		{
+			# Only variable references should be returned by reference
+			$ref=$this->computed[$offset]();
+			return $ref;
+		}
 
 		if(!isset($this->default[$offset]))
 			$this->default[$offset]=null;

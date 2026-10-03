@@ -33,7 +33,7 @@ class MySQL extends \Eleanor\Basic
 			return;
 		}
 
-		$M=\Eleanor\QuietExecution(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
+		$M=\Eleanor\QuietCall(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
 
 		if($M?->connect_errno or !$M?->server_version)
 			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno ?? 0,params:\compact('host','user','db','port','socket'));
@@ -253,9 +253,10 @@ class MySQL extends \Eleanor\Basic
 				return '?';
 			};
 
+			# PHP 8.6: migrate to pipe operator
 			$values=\array_values($d);
-			$values=\array_map(fn($item)=>(array)$item,$values);#PHP 8.5 settype array
-			$values=isset($values[1]) ? \array_map(null,...$values) : [...$values];//Из строк в столбцы
+			$values=\array_map(fn($item)=>(array)$item,$values);
+			$values=\array_map(isset($values[1]) ? null : fn($item)=>(array)$item,...$values);
 			$values=\array_map(fn($item)=>'('.\join(',',\array_map($map,$item)).')',$values);
 		}
 

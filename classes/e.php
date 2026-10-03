@@ -18,6 +18,8 @@ class E extends \Eleanor\Abstracts\E
 		/** User error (e.g. incorrectly transmitted data): no one is responsible 😆 */
 		USER=4;
 
+	protected(set) static bool $logging=false;
+
 	/** @param string $message The same as in \Exception
 	 * @param int $code Constants of class (from above) should be used
 	 * @param ?\Throwable $previous The same as in \Exception
@@ -47,14 +49,14 @@ class E extends \Eleanor\Abstracts\E
 			default=>'Unknown'
 		};
 
-		return $intro.' exception: '.$this->message
-			.($this->hint ? \PHP_EOL.' Hint: '.$this->hint : '');
+		return $intro." exception: $this->message\n File: $this->file[$this->line]"
+			.($this->hint ? "\n Hint: ".$this->hint : '');
 	}
 
 	/** Logging */
 	function Log():void
 	{
-		if(!\Eleanor\Library::$logs_enabled)
+		if(static::$logging)
 			return;
 
 		$type=match($this->code){
@@ -65,10 +67,16 @@ class E extends \Eleanor\Abstracts\E
 			default=>'unknown'
 		};
 
-		$this->LogWriter(
-			\Eleanor\Library::$logs.$type,
-			\md5($this->line.$this->file.$this->code.$this->message)
-		);
+		static::$logging=true;
+
+		try{
+			$this->LogWriter(
+				\Eleanor\Library::$logs.$type,
+				\md5($this->line.$this->file.$this->code.$this->message.$this->hint)
+			);
+		}finally{
+			static::$logging=false;
+		}
 	}
 
 	/** Entry in a .log file

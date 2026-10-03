@@ -58,9 +58,6 @@ class EM extends \Eleanor\Abstracts\E
 	/** Logging */
 	function Log():void
 	{
-		if(!\Eleanor\Library::$logs_enabled)
-			return;
-
 		$type=match($this->code){
 			self::CONNECT=>'db_connect',
 			self::QUERY=>'db_query',

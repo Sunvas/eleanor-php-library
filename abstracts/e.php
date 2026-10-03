@@ -84,7 +84,7 @@ abstract class E extends \Exception implements Loggable
 
 		if($corrupted or $is_json and \json_last_error()!==\JSON_ERROR_NONE)
 		{
-			$salt=\bin2hex(\random_bytes(2));
+			$salt=\bin2hex(\random_bytes(3));
 			\rename($path2json,$path.".$salt.corrupt");
 		}
 
@@ -98,13 +98,13 @@ abstract class E extends \Exception implements Loggable
 
 			if($offset+$length>$size)
 			{
-				$json=[];
+				unset($json[$id]);
 				$exists=false;
 			}
 		}
 
 		$data=$exists ? $json[$id][2] : [];
-		$item=$this->LogItem($data);
+		$item=$this->LogItem($data).\PHP_EOL;
 		$fh=Files::LockFile($path2log,$exists ? 'r+' : 'a');
 
 		if($fh===false)
@@ -151,6 +151,10 @@ abstract class E extends \Exception implements Loggable
 		else
 			$r=false;
 
+		# Degrade to human-readable append-only log if something went wrong
+		if(!$r and $is_json)
+			\unlink($path2json);
+
 		\fclose($fh);
 		\fclose($flh);
 
@@ -171,20 +175,65 @@ abstract class E extends \Exception implements Loggable
 		if($fh===false)
 			return false;
 
-		if(\function_exists('bzopen') and !\is_file($dest.'.bz2') and $hbz=\bzopen($dest.'.bz2','w'))
+		if(\function_exists('bzopen'))
 		{
-			while(!\feof($fh))
-				\bzwrite($hbz,\fread($fh,static::CHUNK_SIZE));
+			$dest.='.bz2';
+			$hbz=\is_file($dest) ? false : \bzopen($dest,'w');
 
-			\bzflush($hbz);
-			$r=\bzclose($hbz);
-		}
-		elseif(\function_exists('gzopen') and !\is_file($dest.'.gz') and $hgz=\gzopen($dest.'.gz','w9'))
-		{
+			if($hbz===false)
+			{
+				\fclose($fh);
+				return false;
+			}
+
 			while(!\feof($fh))
-				\gzwrite($hgz,\fread($fh,static::CHUNK_SIZE));
+			{
+				$chunk=\fread($fh,static::CHUNK_SIZE);
+
+				if(\bzwrite($hbz,$chunk)!==\strlen($chunk))
+				{
+					\bzclose($hbz);
+					\fclose($fh);
+					\unlink($dest);
+
+					return false;
+				}
+			}
+
+			$r=\bzclose($hbz);
+
+			if(!$r)
+				\unlink($dest);
+		}
+		elseif(\function_exists('gzopen'))
+		{
+			$dest.='.gz';
+			$hgz=\is_file($dest) ? false : \gzopen($dest,'w9');
+
+			if($hgz===false)
+			{
+				\fclose($fh);
+				return false;
+			}
+
+			while(!\feof($fh))
+			{
+				$chunk=\fread($fh,static::CHUNK_SIZE);
+
+				if(\gzwrite($hgz,$chunk)!==\strlen($chunk))
+				{
+					\gzclose($hgz);
+					\fclose($fh);
+					\unlink($dest);
+
+					return false;
+				}
+			}
 
 			$r=\gzclose($hgz);
+
+			if(!$r)
+				\unlink($dest);
 		}
 		else
 			$r=false;

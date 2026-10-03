@@ -15,11 +15,11 @@ class Output extends \Eleanor\Basic
 	{
 		$if_match=$_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
-		if($etag)
+		if($etag!=='')
 			$match=\str_contains($if_match,$etag);
 
 		# ETag contains expired time
-		elseif(\preg_match('#e=(\d{,12})#',$if_match,$matches)>0)
+		elseif(\preg_match('#(?:^|")e=(\d{,12})#',$if_match,$matches)>0)
 		{
 			$timestamp=\Eleanor\BASE_TIME+(int)$matches[1];
 			$match=$timestamp>=\time();
@@ -84,7 +84,7 @@ class Output extends \Eleanor\Basic
 		if(\headers_sent())
 			return false;
 
-		if($cache)
+		if($cache!==0 and $cache!=='')
 		{
 			# Unconditional cache for N seconds
 			if(\is_int($cache))

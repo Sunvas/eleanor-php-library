@@ -5,7 +5,7 @@ namespace Eleanor;
 use Eleanor\Classes\{E, Output};
 use Eleanor\Traits\FL4E;
 
-/** Encoding of Eleanor's files */
+/** Encoding of Eleanor's files and internal string operations */
 const CHARSET = 'UTF-8';
 
 \mb_internal_encoding(CHARSET);
@@ -14,7 +14,7 @@ const CHARSET = 'UTF-8';
 \defined('Eleanor\DOMAIN')||\define('Eleanor\DOMAIN',\filter_var($_SERVER['HTTP_HOST'] ?? '',\FILTER_VALIDATE_DOMAIN,\FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
 
 /** Base site path relative to the domain root with trailing slash */
-\defined('Eleanor\SITEDIR')||\define('Eleanor\SITEDIR',\rtrim(\dirname($_SERVER['PHP_SELF'] ?? '/'),'/\\').'/');
+\defined('Eleanor\SITEDIR')||\define('Eleanor\SITEDIR',\rtrim(\dirname($_SERVER['SCRIPT_NAME'] ?? '/'),'/\\').'/');
 
 /** Current request protocol prefix (http:// or https://) */
 \defined('Eleanor\PROTOCOL')||\define('Eleanor\PROTOCOL',($_SERVER['HTTPS'] ?? '')=='on' ? 'https://' : 'http://');
@@ -117,7 +117,7 @@ function AwareInclude(string$file,array$vars=[]):mixed
 		throw$E;
 	}
 
-	return $r===null ? true : $r;
+	return $r;
 }
 
 /** Execute callback quietly with temporary error suppression.
@@ -126,12 +126,12 @@ function AwareInclude(string$file,array$vars=[]):mixed
  * @param int $level Error level to suppress
  * @param array $params Arguments passed to the callback
  * @return mixed Callback return value or null on exception */
-function QuietExecution(callable$Func,int$level=\E_WARNING|\E_NOTICE,array$params=[]):mixed
+function QuietCall(callable$Func,int$level=\E_WARNING|\E_NOTICE,array$params=[]):mixed
 {
-	\set_error_handler(fn()=>null,$level);
+	\set_error_handler(fn()=>1,$level);
 
 	try{
-		return \call_user_func_array($Func,$params);
+		return $Func(...$params);
 	}
 	catch(\Throwable){
 		return null;
@@ -152,17 +152,22 @@ function QuietExecution(callable$Func,int$level=\E_WARNING|\E_NOTICE,array$param
  * @return never */
 function BSOD(string$error,int|string$code,?string$file,?int$line,?string$hint=null,?array$input=null):never
 {
-	$Tpl=new Classes\Template(Library::$bsod);
-	$type=Library::$cli ? 'cli' : match(Library::$bsodtype){
-		Output::HTML=>'html',
-		Output::JSON=>'json',
-		default=>'text'
-	};
+	try{
+		$Tpl=new Classes\Template(Library::$bsod);
+		$type=Library::$cli ? 'cli' : match(Library::$bsodtype){
+			Output::HTML=>'html',
+			Output::JSON=>'json',
+			default=>'text'
+		};
 
-	$out=$Tpl($type,$error,$code,$file,$line,$hint,$input);
+		$out=$Tpl($type,$error,$code,$file,$line,$hint,$input);
+	}catch(\Throwable$E){
+		$out=$E->getMessage();
+		Library::$bsodtype='text/plain';
+	}
 
-	if(\ob_get_level())
-		\ob_clean();
+	while(\ob_get_level())
+		\ob_end_clean();
 
 	if(Library::$cli)
 		\fwrite(\STDERR, $out);
@@ -219,7 +224,7 @@ function Autoloader(string$c,string$dir=__DIR__,string$ns=__NAMESPACE__):void
 
 	if(!$exists or !\class_exists($c,false) and !\interface_exists($c,false) and !\enum_exists($c,false) and !\trait_exists($c,false))
 	{
-		$what=match(\strstr(\ltrim($lc,'\\'), '\\', true)){
+		$what=match(\strstr(\ltrim($lc,'/'), '/', true)){
 			'enums'=>'Enum',
 			'traits'=>'Trait',
 			'interfaces'=>'Interface',
@@ -315,6 +320,7 @@ class Assign extends Basic implements \ArrayAccess
 	}
 
 	/** Create the target object and read its property by reference.
+	 * If the property cannot be returned by reference (readonly, no &__get), falls back to by-value access.
 	 * @param string $n Property name
 	 * @return mixed */
 	function &__get(string$n):mixed
@@ -372,8 +378,7 @@ class Assign extends Basic implements \ArrayAccess
 
 /** Core class of Eleanor PHP Library.
  * Provides shared runtime settings, logging configuration, error/exception handler storage, and lazy object creation. */
-#[\AllowDynamicProperties]
-class Library extends Basic
+abstract class Library extends Basic
 {
 	static
 		/** @var ?callable Previous error handler */
@@ -382,21 +387,14 @@ class Library extends Basic
 		/** @var ?callable Previous exception handler */
 		$old_exception_handler,
 
-		/** @var callable Selective logging filter used when full error/exception logging is disabled */
-		$log_filter;
+		/** @var callable Selective handler for errors (file, code): should return true if the error should be handled */
+		$handle_errors,
 
-	static bool
-		/** @var bool Whether the script is running in CLI mode */
-		$cli=false,
+		/** @var callable Selective handler for exceptions (Exception): should return true if the exception should be handled */
+		$handle_exceptions;
 
-		/** @var bool Whether all errors should be logged */
-		$log_all_errors=true,
-
-		/** @var bool Whether all exceptions should be logged */
-		$log_all_exceptions=true,
-
-		/** @var bool Whether logging is enabled */
-		$logs_enabled=true;
+	/** @var bool Whether the script is running in CLI mode */
+	static bool $cli=false;
 
 	static string
 		/** @var string Directory path where log files are stored */
@@ -407,85 +405,14 @@ class Library extends Basic
 
 		/** @var string MIME type of the Blue Screen of Death response */
 		$bsodtype='text/html';
-
-	/** @var array Registered factories for lazy object creation */
-	protected(set) array $creators=[];
-
-	/** Register a shared object factory
-	 * @param string $n Property name
-	 * @param array $a Factory definition where:
-	 *     - $a[0] is a \Closure
-	 *     - remaining elements are closure arguments
-	 * @throws E
-	 * @return static */
-	function __call(string$n,array$a):static
-	{
-		if(\count($a)<1 or (!$a[0] instanceof \Closure))
-			throw new E("First argument for '$n' constructor should be \\Closure",E::PHP,...BugFileLine($this));
-
-		$this->creators[$n]=$a;
-		return $this;
-	}
-
-	/** Lazily load and return the class object by property name.
-	 * @throws E */
-	function __get(string$n):mixed
-	{
-		return $this->$n=$this($n);
-	}
-
-	/** Create and return the object instance by class name.
-	 * Uses registered factory if available; otherwise attempts to load the class file from the classes' directory.
-	 * @param string $n Class name
-	 * @param string $dir Base directory for class lookup
-	 * @param array $params Factory arguments
-	 * @throws E */
-	function __invoke(string$n,string$dir=__DIR__,array$params=[]):mixed
-	{
-		if(isset($this->creators[$n]))
-			return \call_user_func(...$this->creators[$n],...$params);
-
-		$lc=\strtolower($n);
-		$path=$dir."/classes/$lc.php";
-		$exists=\is_file($path);
-
-		# Support of kebab-case filenames
-		if(!$exists)
-		{
-			$count=0;
-			$kebab=\preg_replace('#([a-z])([A-Z])#','\\1-\\2',$n,count:$count);
-
-			if($count>0)
-			{
-				$path=$dir.'/classes/'.\strtolower($kebab).'.php';
-				$exists=\is_file($path);
-			}
-		}
-
-		if($exists)
-		{
-			$class=(fn()=>require$path)();
-
-			if(\is_object($class))
-				return $class;
-
-			if(!\is_string($class))
-				$class=__NAMESPACE__.'\\'.$n;
-
-			if(\class_exists($class,false))
-				return new $class(...$params);
-		}
-
-		throw new E('Unknown class '.$n,E::PHP,...BugFileLine($this));
-	}
 }
 
-if(php_sapi_name()==='cli')
+if(\PHP_SAPI==='cli')
 {
 	Library::$cli=true;
 	Library::$bsodtype='cli';
 
-	if(!$_SERVER['DOCUMENT_ROOT'])
+	if(empty($_SERVER['DOCUMENT_ROOT']))
 		$_SERVER['DOCUMENT_ROOT']=\getcwd();
 }
 
@@ -493,14 +420,15 @@ if(php_sapi_name()==='cli')
 Library::$logs=\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/logs/';
 
 # The filter receives the source file path and decides whether the error/exception should be logged.
-Library::$log_filter=fn($f)=>\str_starts_with($f,__DIR__.\DIRECTORY_SEPARATOR) || \str_starts_with($f,\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR);
+Library::$handle_errors=fn($f)=>\str_starts_with($f,__DIR__.\DIRECTORY_SEPARATOR) || \str_starts_with($f,\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR);
+Library::$handle_exceptions=fn(\Throwable$E)=>\call_user_func(Library::$handle_errors,$E->getFile());
 
 Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context=null):void{
 	# Skip @ suppressed errors
 	if(!(\error_reporting() & $c))
 		return;
 
-	if(!Library::$log_all_errors and !\call_user_func(Library::$log_filter,$f,$c))
+	if(!\call_user_func(Library::$handle_errors,$f,$c))
 	{
 		if(Library::$old_error_handler)
 			\call_user_func(Library::$old_error_handler,$c,$error,$f,$l,$context);
@@ -508,28 +436,29 @@ Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context
 		return;
 	}
 
-	if(Library::$logs_enabled and \class_exists('\Eleanor\Classes\E'))
-	{
-		if($c & \E_ERROR)
-			$type='Error ';
-		elseif($c & \E_WARNING)
-			$type='Warning ';
-		elseif($c & \E_NOTICE)
-			$type='Notice ';
-		elseif($c & \E_PARSE)
-			$type='Parse error ';
-		else
-			$type='';
+	if($c & (\E_ERROR | \E_USER_ERROR | \E_RECOVERABLE_ERROR))
+		$type='Error ';
+	elseif($c & (\E_WARNING | \E_USER_WARNING))
+		$type='Warning ';
+	elseif($c & (\E_NOTICE | \E_USER_NOTICE))
+		$type='Notice ';
+	elseif($c & (\E_DEPRECATED | \E_USER_DEPRECATED))
+		$type='Deprecated ';
+	else
+		$type='';
 
-		new E($type.$error,E::PHP,file:$f,line:$l,input:$context)->Log();
-
-		# Display errors only if they are related to php code parsing
-		if($c & \E_PARSE)
-			BSOD($type.$error,$c,$f,$l,null,$context);
-	}
+	new E($type.$error,E::PHP,file:$f,line:$l,input:$context)->Log();
 });
 
 Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E):void{
+	if(!\call_user_func(Library::$handle_exceptions,$E))
+	{
+		if(Library::$old_exception_handler)
+			\call_user_func(Library::$old_exception_handler,$E);
+
+		return;
+	}
+
 	$f=$E->getFile();
 	$l=$E->getLine();
 	$c=$E->getCode();
@@ -537,19 +466,19 @@ Library::$old_exception_handler=\set_exception_handler(function(\Throwable$E):vo
 
 	if($E instanceof Interfaces\Loggable)
 		$E->Log();
-	elseif(Library::$log_all_exceptions or \call_user_func(Library::$log_filter,$f,$c)
-		# Patch for the case when autoloader is off
-		and (\class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php')))
+
+	# Patch for the case when autoloader is off
+	elseif(\class_exists('\Eleanor\Classes\E',false) or include(__DIR__.'/classes/e.php'))
 	{
-		$c=match(true){
+		$t=match(true){
+			$E instanceof \ValueError=>E::DATA,
 			$E instanceof \LogicException || $E instanceof \Error=>E::PHP,
 			$E instanceof \RuntimeException=>E::SYSTEM,
-			$E instanceof \ValueError=>E::DATA,
 			default=>E::USER
 		};
 
-		new E($m,$c,$E,file:$f,line:$l)->Log();
+		new E($m,$t,$E,file:$f,line:$l,input:['code'=>$c])->Log();
 	}
 
-	BSOD($m,$c,$f,$l,\property_exists($E,'hint') ? $E->hint : null,\property_exists($E,'input') ? $E->input : null);
+	BSOD($m,$c,$f,$l,\property_exists($E,'hint') ? $E->hint : '',\property_exists($E,'input') ? $E->input : null);
 });

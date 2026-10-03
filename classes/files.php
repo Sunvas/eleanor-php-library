@@ -5,10 +5,10 @@ namespace Eleanor\Classes;
 /** Collection of functions for working with files */
 class Files extends \Eleanor\Basic
 {
-	/** Open the file and exclusively lock it
+	/** Open the file and lock it
 	 * @param string $path Path to the file
 	 * @param string $mode fopen mode
-	 * @param int $lock Lock mode
+	 * @param int $lock Lock mode, default is exclusive
 	 * @return resource|false */
 	static function LockFile(string$path,string$mode='w',int$lock=\LOCK_EX):mixed
 	{
@@ -37,7 +37,10 @@ class Files extends \Eleanor\Basic
 		$real_dest=fn()=>\realpath($dest_dir).\DIRECTORY_SEPARATOR.\basename($destination);
 
 		if(\is_link($source))
-			return $mk_dest_dir() && \symlink(\readlink($source),$real_dest());
+		{
+			$target=\readlink($source);
+			return $target!==false && $mk_dest_dir() && \symlink($target,$real_dest());
+		}
 
 		if(\is_file($source))
 			return $mk_dest_dir() && \copy($source,$real_dest());
@@ -49,7 +52,7 @@ class Files extends \Eleanor\Basic
 		$destination=$real_dest();
 
 		# Prevention copying directory into itself
-		if($source==$destination or \str_starts_with($destination,$source.\DIRECTORY_SEPARATOR))
+		if($source===false or $source==$destination or \str_starts_with($destination,$source.\DIRECTORY_SEPARATOR))
 			return false;
 
 		# PHP 8.6: migrate to pipe operator
@@ -66,12 +69,15 @@ class Files extends \Eleanor\Basic
 	{
 		$path=\rtrim($path,'/\\');
 
+		if(\in_array($path,['','.','..']))
+			return false;
+
 		if(\is_link($path))
 			return \unlink($path);
 
 		if(\is_dir($path))
 		{
-			$entries=\array_diff(\scandir($path),['.','..']);
+			$entries=\array_diff(\scandir($path) ?: [],['.','..']);
 			$empty=\array_all($entries,fn($entry)=>static::Delete($path.\DIRECTORY_SEPARATOR.$entry));
 
 			return $empty && \rmdir($path);
@@ -96,7 +102,7 @@ class Files extends \Eleanor\Basic
 		if(!\is_resource($stream) or $offset<0 or $length<0 or $buf<=0 or $len==0 and $length==0)
 			return null;
 
-		$size=\fstat($stream)['size'];
+		$size=\fstat($stream)['size'] ?? 0;
 		$diff=$len-$length;
 
 		if($diff==0 and $offset<$size)
@@ -112,6 +118,8 @@ class Files extends \Eleanor\Basic
 
 			if(\fwrite($stream,$replace)!==\strlen($replace))
 				return null;
+
+			$diff=$len;
 		}
 		else
 		{

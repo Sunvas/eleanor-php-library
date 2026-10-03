@@ -12,9 +12,6 @@ return[
 	 * @param ?string $hint Hint to fix the error
 	 * @param ?array $input Data that led to the failure */
 	'cli'=>function($error,$code,$file,$line,$hint,$input)use($l10n){
-		if($hint)
-			$hint=$l10n['hint'].': '.$hint.PHP_EOL;
-
 		$CLI=new CLI()
 			->RED($l10n['error_occurred'])->reset(\PHP_EOL,\PHP_EOL)
 			->YELLOW($error)->reset(\PHP_EOL,\PHP_EOL)
@@ -69,7 +66,7 @@ TEXT;
 	'json'=>function($error,$code,$file,$line,$hint,$input){
 		$data=['ok'=>false]+\compact('error','code','file','line','hint','input');
 
-		return \json_encode($data,JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		return \json_encode($data,\JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_INVALID_UTF8_SUBSTITUTE);
 	},
 
 	/** HTML version

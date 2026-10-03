@@ -101,6 +101,9 @@ class Shmop implements \Eleanor\Interfaces\Cache
 
 		$s=\shmop_read($h,0,\shmop_size($h));
 
+		if($s===false)
+			return null;
+
 		return \str_ends_with($s,' ') ? \substr($s,0,-1) : \unserialize($s,['allowed_classes'=>false]);
 	}
 
