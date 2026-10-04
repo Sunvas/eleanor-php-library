@@ -142,7 +142,7 @@ class CLI extends \Eleanor\Abstracts\Append
 		# If text is provided
 		if($s!=='')
 		{
-			$c=$this->opened ? ",{$code}m" : "\e[{$code}m";
+			$c=$this->opened ? ";{$code}m" : "\e[{$code}m";
 
 			$this->length+=\strlen($s);
 			$this->opened=false;
@@ -151,7 +151,7 @@ class CLI extends \Eleanor\Abstracts\Append
 		}
 
 		# Open style sequence without writing text yet
-		$s=$this->opened ? ',' : "\e[";
+		$s=$this->opened ? ';' : "\e[";
 		$this->opened=true;
 
 		return $s.$code;

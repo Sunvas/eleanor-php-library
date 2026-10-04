@@ -254,9 +254,10 @@ class MySQL extends \Eleanor\Basic
 			};
 
 			# PHP 8.6: migrate to pipe operator
+			$wrap=fn($item)=>\is_array($item) ? $item : [$item];
 			$values=\array_values($d);
-			$values=\array_map(fn($item)=>(array)$item,$values);
-			$values=\array_map(isset($values[1]) ? null : fn($item)=>(array)$item,...$values);
+			$values=\array_map($wrap,$values);
+			$values=\array_map(isset($values[1]) ? null : $wrap,...$values);
 			$values=\array_map(fn($item)=>'('.\join(',',\array_map($map,$item)).')',$values);
 		}
 

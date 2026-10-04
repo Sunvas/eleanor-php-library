@@ -14,7 +14,7 @@ const CHARSET = 'UTF-8';
 \defined('Eleanor\DOMAIN')||\define('Eleanor\DOMAIN',\filter_var($_SERVER['HTTP_HOST'] ?? '',\FILTER_VALIDATE_DOMAIN,\FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
 
 /** Base site path relative to the domain root with trailing slash */
-\defined('Eleanor\SITEDIR')||\define('Eleanor\SITEDIR',\rtrim(\dirname($_SERVER['SCRIPT_NAME'] ?? '/'),'/\\').'/');
+\defined('Eleanor\SITEDIR')||\define('Eleanor\SITEDIR',\strrchr($_SERVER['SCRIPT_NAME'] ?? '','/',true).'/');
 
 /** Current request protocol prefix (http:// or https://) */
 \defined('Eleanor\PROTOCOL')||\define('Eleanor\PROTOCOL',($_SERVER['HTTPS'] ?? '')=='on' ? 'https://' : 'http://');

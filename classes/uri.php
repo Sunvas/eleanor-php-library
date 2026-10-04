@@ -21,6 +21,10 @@ class Uri extends \Eleanor\Basic
 	 *   fastcgi_param CLEAN_URI $clean_uri;
 	 *   ...
 	 * }
+	 * CLEAN_URI is expected to contain the URI path without the query string.
+	 * In CLI environments, neither `CLEAN_URI` nor `REQUEST_URI` is available by default, so calling this method
+	 * without emulating a web request is invalid. For tests, daemons, or other request-emulation scenarios,
+	 * set `$_SERVER['REQUEST_URI']` and, optionally, `$_SERVER['CLEAN_URI']` manually.
 	 * @see https://en.wikipedia.org/wiki/Clean_URL
 	 * @see https://ru.wikipedia.org/wiki/Человекопонятный_URL
 	 * @return string */
@@ -36,7 +40,7 @@ class Uri extends \Eleanor\Basic
 				|> \urldecode(...);
 		}
 
-		$uri=$_SERVER['REQUEST_URI'];
+		$uri=$_SERVER['REQUEST_URI'] ?? '';
 
 		# Traditional query-based URL: link like /index.php?param=value
 		if(\str_starts_with($uri,$_SERVER['SCRIPT_NAME']))

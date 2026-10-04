@@ -23,7 +23,7 @@ class Cache extends \Eleanor\Basic
 	function __construct(?string$path=null)
 	{
 		$path??=\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/cache';
-		$path=$path ? \rtrim($path,'/\\') : \sys_get_temp_dir();
+		$path=$path ? \rtrim($path,\DIRECTORY_SEPARATOR) : \sys_get_temp_dir();
 
 		if(!\is_dir($path) and !\mkdir($path,0755,true) or !\is_writeable($path))
 			throw new E('Cache folder is unreachable',E::SYSTEM,input:['path'=>$path]);

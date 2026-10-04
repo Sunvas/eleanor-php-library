@@ -164,7 +164,7 @@ class Template extends \Eleanor\Abstracts\Append implements \ArrayAccess
 						$files[]=\strrchr($f,'.',true);
 
 				if($files)
-					$this->loaded[]=[Template_Type::dir,[\rtrim($item,'/\\'),$files]];
+					$this->loaded[]=[Template_Type::dir,[\rtrim($item,\DIRECTORY_SEPARATOR),$files]];
 			}
 
 			# Templates based on file: either object or array

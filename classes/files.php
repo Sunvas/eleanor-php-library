@@ -67,7 +67,7 @@ class Files extends \Eleanor\Basic
 	 * @return bool */
 	static function Delete(string$path):bool
 	{
-		$path=\rtrim($path,'/\\');
+		$path=\rtrim($path,\DIRECTORY_SEPARATOR);
 
 		if(\in_array($path,['','.','..']))
 			return false;
