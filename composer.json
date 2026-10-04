@@ -1,27 +1,46 @@
 {
-  "authors": [{
-      "name": "Alexnader Sunvas",
-      "email": "library@sunvas.online"
-  }],
-  "autoload": {
-    "files": ["core.php"]
-  },
-  "description": "Frameworkless PHP library for building SPA and bloat-free websites.",
-  "homepage": "https://eleanor-cms.com/library",
-  "keywords": ["php", "library", "frameworkless", "spa", "cms", "shared-hosting"],
-  "license": "MIT",
-  "minimum-stability": "stable",
   "name": "sunvas/eleanor-php-library",
+  "description": "Lightweight, framework-independent PHP toolbox for predictable and maintainable applications.",
+  "keywords": [
+    "caching",
+    "composer",
+    "framework-independent",
+    "frameworkless",
+    "lightweight",
+    "localization",
+    "mysql",
+    "php",
+    "php-library",
+    "php85",
+    "self-contained",
+    "template-engine",
+    "toolbox"
+  ],
+  "homepage": "https://eleanor-cms.com/library",
   "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Alexander Sunvas",
+      "email": "library@sunvas.online"
+    }
+  ],
   "require": {
     "php": ">=8.5"
   },
   "suggest": {
+    "ext-mysqli": "Required for MySQL support",
     "ext-memcache": "Required for Memcache cache engine",
     "ext-memcached": "Required for Memcached cache engine",
     "ext-shmop": "Required for shared memory cache engine"
   },
+  "autoload": {
+    "files": [
+      "core.php"
+    ]
+  },
   "support": {
+    "email": "library@sunvas.online",
     "issues": "https://github.com/Sunvas/eleanor-php-library/issues",
     "source": "https://github.com/Sunvas/eleanor-php-library"
   }

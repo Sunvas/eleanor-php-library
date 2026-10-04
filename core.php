@@ -10,16 +10,16 @@ const CHARSET = 'UTF-8';
 
 \mb_internal_encoding(CHARSET);
 
-/** Base domain name */
+/** @const Base domain name */
 \defined('Eleanor\DOMAIN')||\define('Eleanor\DOMAIN',\filter_var($_SERVER['HTTP_HOST'] ?? '',\FILTER_VALIDATE_DOMAIN,\FILTER_FLAG_HOSTNAME) ? $_SERVER['HTTP_HOST'] : '');
 
-/** Base site path relative to the domain root with trailing slash */
+/** @const Base site path relative to the domain root with trailing slash */
 \defined('Eleanor\SITEDIR')||\define('Eleanor\SITEDIR',\strrchr($_SERVER['SCRIPT_NAME'] ?? '','/',true).'/');
 
-/** Current request protocol prefix (http:// or https://) */
+/** @const Current request protocol prefix (http:// or https://) */
 \defined('Eleanor\PROTOCOL')||\define('Eleanor\PROTOCOL',($_SERVER['HTTPS'] ?? '')=='on' ? 'https://' : 'http://');
 
-/** Internal base timestamp used for compact relative time storage */
+/** @const Internal base timestamp used for compact relative time storage */
 \defined('Eleanor\BASE_TIME')||\define('Eleanor\BASE_TIME',\mktime(0,0,0,1,1,2025));
 
 /** Get the file path and line number where the error occurred.
@@ -411,16 +411,13 @@ if(\PHP_SAPI==='cli')
 {
 	Library::$cli=true;
 	Library::$bsodtype='cli';
-
-	if(empty($_SERVER['DOCUMENT_ROOT']))
-		$_SERVER['DOCUMENT_ROOT']=\getcwd();
 }
 
 # By default, logs are stored in the site's ./logs directory. Web access to this directory should be restricted.
-Library::$logs=\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).'/logs/';
+Library::$logs=\rtrim(\getenv('DOCUMENT_ROOT') ?: \getcwd(),\DIRECTORY_SEPARATOR).'/logs/';
 
 # The filter receives the source file path and decides whether the error/exception should be logged.
-Library::$handle_errors=fn($f)=>\str_starts_with($f,__DIR__.\DIRECTORY_SEPARATOR) || \str_starts_with($f,\rtrim($_SERVER['DOCUMENT_ROOT'],\DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR);
+Library::$handle_errors=fn($f)=>\str_starts_with($f,__DIR__) || \str_starts_with($f,\getenv('DOCUMENT_ROOT') ?: \getcwd());
 Library::$handle_exceptions=fn(\Throwable$E)=>\call_user_func(Library::$handle_errors,$E->getFile());
 
 Library::$old_error_handler=\set_error_handler(function($c,$error,$f,$l,$context=null):void{
