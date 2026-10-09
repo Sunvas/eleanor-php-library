@@ -1,5 +1,4 @@
-<?php
-# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
+<?php # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor\Classes;
 
 use function Eleanor\BugFileLine;
@@ -33,10 +32,14 @@ class MySQL extends \Eleanor\Basic
 			return;
 		}
 
-		$M=\Eleanor\QuietCall(fn()=>new \MySQLi($host,$user,$pass,$db,$port,$socket));
+		$M=new \MySQLi;
+		$M->options(\MYSQLI_OPT_INT_AND_FLOAT_NATIVE,1);
 
-		if($M?->connect_errno or !$M?->server_version)
-			throw new EM($M?->connect_error ?? 'Connect error',EM::CONNECT,...BugFileLine(),errno:$M?->connect_errno ?? 0,params:\compact('host','user','db','port','socket'));
+		try{
+			$M->real_connect($host,$user,$pass,$db,$port,$socket);
+		}catch(\mysqli_sql_exception$E){
+			throw new EM($E->getMessage(),EM::CONNECT,$E,...BugFileLine(),errno:$E->getCode(),params:\compact('host','user','db','port','socket'));
+		}
 
 		$M->autocommit(true);
 

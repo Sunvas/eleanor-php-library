@@ -16,7 +16,10 @@ class E extends \Eleanor\Abstracts\E
 		DATA=3,
 
 		/** User error (e.g. incorrectly transmitted data): no one is responsible 😆 */
-		USER=4;
+		USER=4,
+
+		/** External resource error (e.g. invalid API response): the external service or resource provider is responsible */
+		EXTERNAL=5;
 
 	protected(set) static bool $logging=false;
 
@@ -46,6 +49,7 @@ class E extends \Eleanor\Abstracts\E
 			$this::DATA=>'Data',
 			$this::USER=>'User',
 			$this::SYSTEM=>'System',
+			$this::EXTERNAL=>'External',
 			default=>'Unknown'
 		};
 
@@ -64,6 +68,7 @@ class E extends \Eleanor\Abstracts\E
 			self::DATA=>'data',
 			self::USER=>'user',
 			self::SYSTEM=>'system',
+			self::EXTERNAL=>'external',
 			default=>'unknown'
 		};
 

@@ -1,5 +1,4 @@
-<?php
-# Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
+<?php # Eleanor PHP Library © 2025 --> https://eleanor-cms.com/library
 namespace Eleanor;
 
 use Eleanor\Classes\{E, Output};
@@ -118,27 +117,6 @@ function AwareInclude(string$file,array$vars=[]):mixed
 	}
 
 	return $r;
-}
-
-/** Execute callback quietly with temporary error suppression.
- * PHP errors are ignored and thrown exceptions are converted to null.
- * @param callable $Func Callback to execute
- * @param int $level Error level to suppress
- * @param array $params Arguments passed to the callback
- * @return mixed Callback return value or null on exception */
-function QuietCall(callable$Func,int$level=\E_WARNING|\E_NOTICE,array$params=[]):mixed
-{
-	\set_error_handler(fn()=>1,$level);
-
-	try{
-		return $Func(...$params);
-	}
-	catch(\Throwable){
-		return null;
-	}
-	finally{
-		\restore_error_handler();
-	}
 }
 
 /** Eleanor's Blue Screen of Death.
